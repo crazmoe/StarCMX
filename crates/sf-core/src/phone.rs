@@ -443,10 +443,10 @@ impl Phone {
     ) -> PhoneResult<()> {
         let sip = self.sip()?;
         if let Some(dev) = player {
-            sip.set_player(sip_call_id, "pipewire", dev)?;
+            sip.set_player(sip_call_id, sf_sip::AUDIO_DRIVER, dev)?;
         }
         if let Some(dev) = source {
-            sip.set_source(sip_call_id, "pipewire", dev)?;
+            sip.set_source(sip_call_id, sf_sip::AUDIO_DRIVER, dev)?;
         }
         Ok(())
     }

@@ -124,17 +124,17 @@ pub async fn softphone_config(prefs: &Prefs) -> sf_sip::Config {
         .await
         .unwrap_or_default();
     if let Some(dev) = sf_audio::pick(&prefs.speakers, &present.speakers) {
-        config.audio_player = format!("pipewire,{dev}");
+        config.audio_player = format!("{},{dev}", sf_sip::AUDIO_DRIVER);
     }
     if let Some(dev) = sf_audio::pick(&prefs.microphones, &present.microphones) {
-        config.audio_source = format!("pipewire,{dev}");
+        config.audio_source = format!("{},{dev}", sf_sip::AUDIO_DRIVER);
     }
     config
 }
 
 /// PCM eines Klingeltons: eingebauter Name oder Pfad einer WAV-Datei.
 fn ringtone(name: &str) -> Arc<Vec<i16>> {
-    if name.ends_with(".wav") || name.contains('/') {
+    if name.ends_with(".wav") || name.contains(['/', '\\']) {
         match sf_audio::load_wav(std::path::Path::new(name)) {
             Ok(pcm) => return Arc::new(pcm),
             Err(e) => tracing::warn!(error = %e, name, "Klingelton nicht geladen"),
@@ -260,6 +260,7 @@ fn bluetooth_address(device: &str) -> Option<String> {
 }
 
 /// Adresse → Name aller Geräte, die BlueZ kennt
+#[cfg(target_os = "linux")]
 fn bluez_aliases() -> zbus::Result<HashMap<String, String>> {
     let conn = zbus::blocking::Connection::system()?;
     let objects = zbus::blocking::fdo::ObjectManagerProxy::builder(&conn)
@@ -281,6 +282,12 @@ fn bluez_aliases() -> zbus::Result<HashMap<String, String>> {
             Some((addr.to_uppercase(), name))
         })
         .collect())
+}
+
+/// Unter Windows heissen die Geräte schon nach dem Headset.
+#[cfg(not(target_os = "linux"))]
+fn bluez_aliases() -> Result<HashMap<String, String>, String> {
+    Ok(HashMap::new())
 }
 
 /// Spielt einen Klingelton (oder mit `name = None` den Testton) einmal ab.

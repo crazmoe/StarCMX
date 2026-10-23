@@ -10,3 +10,7 @@
 	path = upstream
 	url = https://github.com/crazmoe/StarCLX
 	shallow = true
+[submodule "crates/sf-sip/vendor/libg722"]
+	path = crates/sf-sip/vendor/libg722
+	url = https://github.com/sippy/libg722
+	shallow = true

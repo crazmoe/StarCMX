@@ -16,6 +16,10 @@
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <wincrypt.h>
+#endif
 
 /* Aus libre (src/tls/openssl/tls.h), dort nicht öffentlich deklariert */
 SSL_CTX *tls_ssl_ctx(const struct tls *tls);
@@ -163,6 +167,32 @@ static int pin_verify(X509_STORE_CTX *ctx, void *arg)
 
 	return 0;
 }
+
+#ifdef _WIN32
+/* OpenSSL kennt unter Windows keine Systemzertifikate: die
+ * Stammzertifikate aus dem Zertifikatspeicher des Systems übernehmen. */
+static void load_windows_roots(SSL_CTX *ctx)
+{
+	X509_STORE *store = SSL_CTX_get_cert_store(ctx);
+	HCERTSTORE sys = CertOpenSystemStoreA(0, "ROOT");
+	PCCERT_CONTEXT cert = NULL;
+
+	if (!store || !sys)
+		return;
+
+	while ((cert = CertEnumCertificatesInStore(sys, cert)) != NULL) {
+		const unsigned char *der = cert->pbCertEncoded;
+		X509 *x = d2i_X509(NULL, &der, (long)cert->cbCertEncoded);
+
+		if (x) {
+			(void)X509_STORE_add_cert(store, x);
+			X509_free(x);
+		}
+	}
+
+	CertCloseStore(sys, 0);
+}
+#endif
 
 static void emit(int ev, struct ua *ua, struct call *call, const char *text)
 {
@@ -445,9 +475,13 @@ int sfsip_run(const char *config, const char *software, const char *pinlist,
 	err = str_dup(&pins, pinlist ? pinlist : "");
 	if (err)
 		goto out;
-	if (uag_tls() && tls_ssl_ctx(uag_tls()))
+	if (uag_tls() && tls_ssl_ctx(uag_tls())) {
+#ifdef _WIN32
+		load_windows_roots(tls_ssl_ctx(uag_tls()));
+#endif
 		SSL_CTX_set_cert_verify_callback(tls_ssl_ctx(uag_tls()),
 						 pin_verify, NULL);
+	}
 
 	err = conf_modules();
 	if (err)

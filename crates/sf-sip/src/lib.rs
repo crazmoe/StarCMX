@@ -146,16 +146,37 @@ pub enum SipEvent {
     },
 }
 
+/// Audiomodul von baresip für Lautsprecher und Mikrofon; Gerät dahinter
+/// mit Komma, z. B. `wasapi,{0.0.0.00000000}.{…}`.
+#[cfg(windows)]
+pub const AUDIO_DRIVER: &str = "wasapi";
+#[cfg(not(windows))]
+pub const AUDIO_DRIVER: &str = "pipewire";
+
+/// In libbaresip einkompilierte Module, die geladen werden
+#[cfg(windows)]
+const MODULES: &[&str] = &[
+    "g711", "libg722", "srtp", "auconv", "auresamp", "stun", "netroam", "wasapi", "ausine",
+    "aubridge", "aufile",
+];
+#[cfg(not(windows))]
+const MODULES: &[&str] = &[
+    "g711", "g722", "srtp", "auconv", "auresamp", "stun", "netroam", "pipewire", "pulse", "alsa",
+    "ausine", "aubridge", "aufile",
+];
+
 /// Allgemeine Einstellungen des Softphones.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// z. B. `pipewire` oder `pulse`, optional mit Gerät: `alsa,default`.
+    /// z. B. `wasapi` oder `pipewire`, optional mit Gerät: `alsa,default`.
     pub audio_player: String,
     pub audio_source: String,
     /// Feste lokale SIP-Adresse, sonst wählt baresip freie Ports.
     pub sip_listen: Option<String>,
     /// TLS-Zertifikat der Anlage prüfen.
     pub verify_server: bool,
+    /// Zusätzliche CA-Zertifikate (PEM). Unter Windows gelten ohnehin die
+    /// Stammzertifikate des Systems; der Pfad darf keine Leerzeichen haben.
     pub ca_file: Option<String>,
     /// SHA-256-Fingerabdrücke (`AA:BB:…`) von Zertifikaten, die gelten,
     /// obwohl sie die normale Prüfung nicht bestehen (vom Benutzer bestätigt).
@@ -167,11 +188,11 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            audio_player: "pipewire".into(),
-            audio_source: "pipewire".into(),
+            audio_player: AUDIO_DRIVER.into(),
+            audio_source: AUDIO_DRIVER.into(),
             sip_listen: None,
             verify_server: true,
-            ca_file: Some("/etc/ssl/certs/ca-certificates.crt".into()),
+            ca_file: (!cfg!(windows)).then(|| "/etc/ssl/certs/ca-certificates.crt".into()),
             trusted_fingerprints: Vec::new(),
             extra: String::new(),
         }
@@ -195,10 +216,7 @@ impl Config {
         c += &format!("audio_source {}\n", self.audio_source);
         c += &format!("audio_alert {}\n", self.audio_player);
         c += "call_max_calls 4\n";
-        for m in [
-            "g711", "g722", "srtp", "auconv", "auresamp", "stun", "netroam", "pipewire", "pulse",
-            "alsa", "ausine", "aubridge", "aufile",
-        ] {
+        for m in MODULES {
             c += &format!("module {m}.so\n");
         }
         c += &self.extra;
