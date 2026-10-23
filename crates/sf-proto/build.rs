@@ -9,7 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // nicht ein zweites Mal veröffentlicht werden.
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../upstream/proto");
     if !root.join("proxy").exists() {
-        return Err("upstream/proto fehlt: `git submodule update --init upstream` ausführen".into());
+        return Err(
+            "upstream/proto fehlt: `git submodule update --init upstream` ausführen".into(),
+        );
     }
     let mut files: Vec<PathBuf> = Vec::new();
     for dir in DIRS {

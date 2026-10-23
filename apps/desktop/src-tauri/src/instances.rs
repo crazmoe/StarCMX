@@ -1175,14 +1175,8 @@ mod tests {
     fn bus_names() {
         let n = Names::new("ch.crazmoe.starcmx");
         assert_eq!(n.main, "ch.crazmoe.starcmx.SingleInstance");
-        assert_eq!(
-            n.instance(""),
-            "ch.crazmoe.starcmx.Instance.Default"
-        );
-        assert_eq!(
-            n.instance("2"),
-            "ch.crazmoe.starcmx.Instance.P2"
-        );
+        assert_eq!(n.instance(""), "ch.crazmoe.starcmx.Instance.Default");
+        assert_eq!(n.instance("2"), "ch.crazmoe.starcmx.Instance.P2");
         assert_eq!(n.profile_of(&n.instance("2")).as_deref(), Some("2"));
         assert_eq!(n.profile_of(&n.instance("")).as_deref(), Some(""));
         assert_eq!(n.profile_of(&n.main), None);
