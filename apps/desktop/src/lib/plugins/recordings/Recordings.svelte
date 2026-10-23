@@ -4,7 +4,7 @@
   import { onMount } from "svelte";
   import Icon from "../../Icon.svelte";
   import { run, canDial } from "../call/phone.svelte";
-  import { loadRecordings, mimeOf, recordings, type Recording } from "./recordings.svelte";
+  import { loadRecordings, mimeOf, recordings, type Recording } from "./recordings-state.svelte";
   import { locale, t } from "../../i18n.svelte";
 
   let term = $state("");

@@ -87,7 +87,8 @@ StarCLX repository, which is a git submodule under `upstream/` (pinned to a comm
 The code is laid out like StarCLX. Where Windows needs something else, there is a variant with
 the same interface next to the Linux one (`instances_win.rs`, `shortcuts_win.rs`,
 `flatpak_none.rs`, `sf-audio/src/wasapi.rs`, `sf-headset/src/hid.rs`), so changes from StarCLX
-usually apply directly:
+usually apply directly. Four UI state modules are called `*-state.svelte.ts` here (e.g.
+`chat-state.svelte.ts`), because Windows does not tell `chat.svelte.ts` and `Chat.svelte` apart:
 
 ```sh
 git -C upstream fetch && git -C upstream checkout <commit>

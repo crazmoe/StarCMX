@@ -5,7 +5,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { untrack } from "svelte";
-  import { chat } from "../chat/chat.svelte";
+  import { chat } from "../chat/chat-state.svelte";
   import { t } from "../../i18n.svelte";
 
   let { text: initial, subject, onclose }: { text: string; subject: string; onclose: () => void } = $props();

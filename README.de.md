@@ -90,7 +90,9 @@ StarCLX-Repo, das als Git-Submodul unter `upstream/` eingebunden ist (fest auf e
 Der Code ist aufgebaut wie in StarCLX. Wo Windows etwas anderes braucht, liegt neben der
 Linux-Variante eine mit derselben Schnittstelle (`instances_win.rs`, `shortcuts_win.rs`,
 `flatpak_none.rs`, `sf-audio/src/wasapi.rs`, `sf-headset/src/hid.rs`). Änderungen aus StarCLX
-lassen sich deshalb meist direkt übernehmen:
+lassen sich deshalb meist direkt übernehmen. Vier Zustandsmodule der Oberfläche heissen hier
+`*-state.svelte.ts` (etwa `chat-state.svelte.ts`), weil Windows `chat.svelte.ts` und
+`Chat.svelte` nicht auseinanderhält:
 
 ```sh
 git -C upstream fetch && git -C upstream checkout <commit>
