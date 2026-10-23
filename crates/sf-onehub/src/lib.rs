@@ -1,0 +1,445 @@
+//! Verbindung zur OneHub-gRPC-API der STARFACE (`https://<anlage>:9092`).
+//!
+//! Jeder Aufruf trägt `Authorization: Bearer <access-token>`. Das Token wird
+//! über [`TokenHandle`] gesetzt und kann nach einem Refresh ausgetauscht
+//! werden, ohne die Verbindung neu aufzubauen.
+
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
+
+use sf_proto::v1;
+use tonic::metadata::MetadataValue;
+use tonic::service::Interceptor;
+use tonic::transport::{Channel, ClientTlsConfig, Endpoint};
+use tonic::{Request, Status};
+
+pub use sf_backoff;
+pub use sf_proto;
+
+pub const DEFAULT_PORT: u16 = 9092;
+
+/// Softphone-ID für RegisterSipDevice. Die Anlage leitet daraus den
+/// Telefontyp ab (Enum `StarfaceType` im Anlagen-Code) und legt ein
+/// passendes App-Telefon an. Bekannte IDs: Windows
+/// 163C00A2-C2F1-4FFE-9474-49283C379852, Mac
+/// E22FF5B3-38ED-4A5E-966A-80B4785A2FF7, iPhone
+/// FFFDF5C8-E74F-4B18-B258-4B66C3FFFFAB, Android
+/// 244C5E4C-4011-4F76-A7E1-52D40F399C6B. Hier: "UCC Client for Linux".
+pub const SIP_DEVICE_ID: &str = "D4CC1516-EC90-42C7-8F70-B0853B173232";
+/// Geräte-ID der Windows-App
+pub const SIP_DEVICE_ID_WINDOWS: &str = "163C00A2-C2F1-4FFE-9474-49283C379852";
+/// Geräte-ID der Mac-App
+pub const SIP_DEVICE_ID_MAC: &str = "E22FF5B3-38ED-4A5E-966A-80B4785A2FF7";
+
+/// Ersatz, wenn die Anlage das Linux-App-Telefon verweigert: Ohne das Recht
+/// `uci_autoprovisioning` legt sie es nicht an, die Telefone der Desktop-Apps
+/// aber schon. Genommen wird das einer App, die auf diesem System nicht
+/// offiziell läuft, damit StarCLX der offiziellen App auf demselben Rechner
+/// nicht das Telefon wegnimmt.
+#[cfg(windows)]
+pub const SIP_DEVICE_ID_FALLBACK: &str = SIP_DEVICE_ID_MAC;
+#[cfg(not(windows))]
+pub const SIP_DEVICE_ID_FALLBACK: &str = SIP_DEVICE_ID_WINDOWS;
+
+fn phone_matches_sip_user(phone_name: &str, sip_user: &str) -> bool {
+    phone_name.strip_prefix("SIP/").unwrap_or(phone_name) == sip_user
+}
+
+/// Antwort von `SipDeviceService.RegisterSipDevice`.
+#[derive(Clone)]
+pub struct SipCredentials {
+    pub user: String,
+    pub password: String,
+    pub realm: String,
+    pub port: u16,
+}
+
+impl std::fmt::Debug for SipCredentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SipCredentials")
+            .field("user", &self.user)
+            .field("password", &"***")
+            .field("realm", &self.realm)
+            .field("port", &self.port)
+            .finish()
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Verbindung fehlgeschlagen: {0}")]
+    Transport(#[from] tonic::transport::Error),
+    #[error("gRPC-Fehler: {0}")]
+    Status(#[from] Status),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+impl Error {
+    /// Meldung der Anlage, wenn dem Benutzer ein Recht fehlt
+    /// (gRPC `PermissionDenied`), sonst `None`. Manche Dienste (z. B.
+    /// Voicemail) melden das fehlende Recht als `Internal` mit „does not have
+    /// the permission …“; das zählt ebenfalls.
+    pub fn permission_denied(&self) -> Option<&str> {
+        match self {
+            Error::Status(s) if s.code() == tonic::Code::PermissionDenied => Some(s.message()),
+            Error::Status(s)
+                if s.code() == tonic::Code::Internal
+                    && s.message().contains("does not have the permission") =>
+            {
+                Some(s.message())
+            }
+            _ => None,
+        }
+    }
+
+    /// Die Anlage kennt den Dienst nicht (gRPC `Unimplemented`), etwa weil
+    /// ein Modul fehlt.
+    pub fn unimplemented(&self) -> bool {
+        matches!(self, Error::Status(s) if s.code() == tonic::Code::Unimplemented)
+    }
+
+    /// Die Anlage war nicht zu erreichen (Netz weg, VPN getrennt, Zeitüberschreitung),
+    /// im Gegensatz zu einer Antwort der Anlage selbst.
+    pub fn unreachable(&self) -> bool {
+        match self {
+            Error::Transport(_) => true,
+            Error::Status(s) => {
+                matches!(
+                    s.code(),
+                    tonic::Code::Unavailable
+                        | tonic::Code::DeadlineExceeded
+                        | tonic::Code::Cancelled
+                        | tonic::Code::Unknown
+                ) && self.retry_after().is_none()
+            }
+        }
+    }
+
+    /// Wartezeit, wenn die Anlage wegen eines Rate-Limits abweist
+    /// (gRPC `ResourceExhausted` oder HTTP 429), sonst `None`.
+    pub fn retry_after(&self) -> Option<Duration> {
+        let Error::Status(s) = self else { return None };
+        let limited = match s.code() {
+            tonic::Code::ResourceExhausted => true,
+            // tonic meldet ein HTTP 429 eines Proxys als `Unavailable`
+            tonic::Code::Unavailable => s.message().contains("429"),
+            _ => false,
+        };
+        limited.then(|| {
+            sf_backoff::parse_retry_after(
+                s.metadata()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok()),
+            )
+        })
+    }
+}
+
+/// Gemeinsam genutztes Access-Token.
+#[derive(Clone, Default)]
+pub struct TokenHandle(Arc<RwLock<String>>);
+
+impl TokenHandle {
+    pub fn new(token: impl Into<String>) -> Self {
+        Self(Arc::new(RwLock::new(token.into())))
+    }
+
+    pub fn set(&self, token: impl Into<String>) {
+        *self.0.write().unwrap_or_else(|e| e.into_inner()) = token.into();
+    }
+
+    pub fn get(&self) -> String {
+        self.0.read().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+}
+
+#[derive(Clone)]
+pub struct BearerInterceptor(TokenHandle);
+
+impl Interceptor for BearerInterceptor {
+    fn call(&mut self, mut req: Request<()>) -> std::result::Result<Request<()>, Status> {
+        let value = MetadataValue::try_from(format!("Bearer {}", self.0.get()))
+            .map_err(|_| Status::unauthenticated("Token enthält ungültige Zeichen"))?;
+        req.metadata_mut().insert("authorization", value);
+        Ok(req)
+    }
+}
+
+type Svc = tonic::service::interceptor::InterceptedService<Channel, BearerInterceptor>;
+
+/// Eine Verbindung zur Anlage. Günstig zu klonen; alle Clients teilen sich
+/// denselben HTTP/2-Kanal.
+#[derive(Clone)]
+pub struct OneHub {
+    channel: Channel,
+    token: TokenHandle,
+}
+
+macro_rules! service {
+    ($name:ident, $($client:ident)::+) => {
+        pub fn $name(&self) -> $($client)::+<Svc> {
+            $($client)::+::with_interceptor(self.channel.clone(), self.interceptor())
+        }
+    };
+}
+
+/// Abstand der HTTP/2-Pings und Wartezeit auf die Antwort
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(20);
+const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(10);
+
+impl OneHub {
+    /// `host` ohne Schema, z. B. `pbx.example.com`.
+    pub async fn connect(host: &str, port: u16, token: TokenHandle) -> Result<Self> {
+        // Keepalive: Nach Ruhezustand oder Netzwechsel ist die Verbindung oft
+        // tot, ohne dass ein Abbau ankommt. Ohne Pings warten die Event-Streams
+        // dann ewig; mit Pings brechen sie ab und verbinden neu.
+        let channel = Endpoint::from_shared(format!("https://{host}:{port}"))?
+            .tls_config_with_verifier(ClientTlsConfig::new().domain_name(host), sf_tls::verifier())?
+            .user_agent(concat!("starclx/", env!("CARGO_PKG_VERSION")))?
+            .connect_timeout(Duration::from_secs(10))
+            .tcp_keepalive(Some(Duration::from_secs(20)))
+            .http2_keep_alive_interval(KEEPALIVE_INTERVAL)
+            .keep_alive_timeout(KEEPALIVE_TIMEOUT)
+            .keep_alive_while_idle(true)
+            .connect()
+            .await?;
+        Ok(Self { channel, token })
+    }
+
+    pub fn token(&self) -> &TokenHandle {
+        &self.token
+    }
+
+    fn interceptor(&self) -> BearerInterceptor {
+        BearerInterceptor(self.token.clone())
+    }
+
+    service!(
+        health,
+        v1::health::health_service_client::HealthServiceClient
+    );
+    service!(
+        system,
+        v1::system::system_service_client::SystemServiceClient
+    );
+    service!(me, v1::me::me_service_client::MeServiceClient);
+    service!(call, v1::call::call_service_client::CallServiceClient);
+    service!(
+        sip_device,
+        v1::sipdevice::sip_device_service_client::SipDeviceServiceClient
+    );
+    service!(chat, v1::chat::chat_service_client::ChatServiceClient);
+    service!(
+        conference_call,
+        v1::conference::conference_call_service_client::ConferenceCallServiceClient
+    );
+    service!(
+        conference,
+        v1::conference::conference_service_client::ConferenceServiceClient
+    );
+    service!(
+        voicemail,
+        v1::voicemail::voice_mail_service_client::VoiceMailServiceClient
+    );
+    service!(
+        audio_record,
+        v1::audiorecord::audio_record_service_client::AudioRecordServiceClient
+    );
+    service!(
+        contact,
+        v1::contact::contact_service_client::ContactServiceClient
+    );
+    service!(
+        simple_contact,
+        v1::contact::phonenumber::simple_contact_service_client::SimpleContactServiceClient
+    );
+    service!(
+        journal,
+        v1::journal::journal_service_client::JournalServiceClient
+    );
+    service!(
+        user_id_lookup,
+        v1::useridlookup::user_id_lookup_service_client::UserIdLookupServiceClient
+    );
+    service!(
+        presence,
+        v1::presence::presence_service_client::PresenceServiceClient
+    );
+    service!(
+        redirect,
+        v1::redirect::redirect_service_client::RedirectServiceClient
+    );
+    service!(
+        fmc_phone,
+        v1::fmcphone::fmc_phone_service_client::FmcPhoneServiceClient
+    );
+    service!(
+        group,
+        v1::sfpbx::group::group_service_client::GroupServiceClient
+    );
+    service!(user, v1::user::user_service_client::UserServiceClient);
+    service!(queue, v1::queue::queue_service_client::QueueServiceClient);
+    service!(
+        call_back_on_busy,
+        v1::ccbs::call_back_on_busy_service_client::CallBackOnBusyServiceClient
+    );
+    service!(
+        module,
+        v1::module::module_service_client::ModuleServiceClient
+    );
+
+    /// Benutzerbild als Datei (meist JPEG oder PNG); `None`, wenn keins
+    /// hinterlegt ist.
+    pub async fn avatar(&self, user_id: &str) -> Result<Option<Vec<u8>>> {
+        let req = v1::types::GetAvatarRequest {
+            user_id: Some(v1::types::UserId {
+                id: user_id.to_owned(),
+            }),
+        };
+        let mut stream = match self.user().get_avatar(req).await {
+            Ok(r) => r.into_inner(),
+            Err(s) if s.code() == tonic::Code::NotFound => return Ok(None),
+            Err(s) => return Err(s.into()),
+        };
+        let mut data = Vec::new();
+        loop {
+            match stream.message().await {
+                Ok(Some(chunk)) => {
+                    if let Some(c) = chunk.avatar_chunk {
+                        data.extend_from_slice(&c.data);
+                    }
+                }
+                Ok(None) => break,
+                Err(s) if s.code() == tonic::Code::NotFound => return Ok(None),
+                Err(s) => return Err(s.into()),
+            }
+        }
+        Ok((!data.is_empty()).then_some(data))
+    }
+
+    /// Holt die SIP-Zugangsdaten für das App-Telefon zu `device_id` (siehe
+    /// [`SIP_DEVICE_ID`]). Legt das Telefon bei Bedarf auf der Anlage an.
+    pub async fn register_sip_device(
+        &self,
+        device_id: &str,
+        app_version: &str,
+    ) -> Result<SipCredentials> {
+        let req = v1::sipdevice::RegisterSipDeviceRequest {
+            sip_device_id: Some(v1::types::SipDeviceId {
+                id: device_id.into(),
+            }),
+            app_version: app_version.into(),
+        };
+        let cfg = self
+            .sip_device()
+            .register_sip_device(req)
+            .await?
+            .into_inner()
+            .sip_device_config
+            .ok_or_else(|| Status::internal("RegisterSipDevice ohne Konfiguration"))?;
+        Ok(SipCredentials {
+            user: cfg.sip_user_id.map(|u| u.id).unwrap_or_default(),
+            password: cfg.password,
+            realm: cfg.realm,
+            port: u16::try_from(cfg.port)
+                .map_err(|_| Status::internal(format!("ungültiger SIP-Port {}", cfg.port)))?,
+        })
+    }
+
+    /// Telefon-ID des App-Telefons, das zu einem SIP-Benutzer gehört. Die
+    /// Anlage nennt es `SIP/<sip_user>`.
+    pub async fn phone_id_for_sip_user(&self, sip_user: &str) -> Result<Option<String>> {
+        let phones = self.me().get_phones(()).await?.into_inner().phones;
+        Ok(phones
+            .into_iter()
+            .find(|p| phone_matches_sip_user(&p.name, sip_user))
+            .and_then(|p| p.phone_id)
+            .map(|id| id.id))
+    }
+
+    /// Jabber-ID eines Benutzers für den Chat (XMPP)
+    pub async fn chat_jid(&self, user_id: &str) -> Result<String> {
+        let res = self
+            .chat()
+            .get_chat_id(v1::chat::GetChatIdRequest {
+                user_id: Some(v1::types::UserId {
+                    id: user_id.to_owned(),
+                }),
+            })
+            .await?
+            .into_inner();
+        Ok(res.chat_id.map(|c| c.id).unwrap_or_default())
+    }
+
+    pub async fn server_version(&self) -> Result<String> {
+        Ok(self
+            .system()
+            .get_server_version(())
+            .await?
+            .into_inner()
+            .version)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rate_limit_is_recognised() {
+        let mut s = Status::resource_exhausted("zu viele Anfragen");
+        s.metadata_mut()
+            .insert("retry-after", MetadataValue::from_static("7"));
+        assert_eq!(Error::Status(s).retry_after(), Some(Duration::from_secs(7)));
+        let s = Status::unavailable("HTTP 429 Too Many Requests");
+        assert_eq!(
+            Error::Status(s).retry_after(),
+            Some(sf_backoff::LIMITED_DEFAULT)
+        );
+        assert_eq!(
+            Error::Status(Status::unavailable("Verbindung weg")).retry_after(),
+            None
+        );
+    }
+
+    #[test]
+    fn unreachable_only_without_answer() {
+        assert!(Error::Status(Status::unavailable("tcp connect error")).unreachable());
+        assert!(Error::Status(Status::deadline_exceeded("timeout")).unreachable());
+        assert!(!Error::Status(Status::unavailable("HTTP 429")).unreachable());
+        assert!(!Error::Status(Status::unauthenticated("Token abgelaufen")).unreachable());
+        assert!(!Error::Status(Status::permission_denied("kein Recht")).unreachable());
+    }
+
+    #[test]
+    fn permission_denied_also_as_internal_error() {
+        let msg = "The user with account id 4600 does not have the permission voicemail";
+        assert_eq!(
+            Error::Status(Status::internal(msg)).permission_denied(),
+            Some(msg)
+        );
+        assert!(
+            Error::Status(Status::permission_denied("kein Recht"))
+                .permission_denied()
+                .is_some()
+        );
+        assert_eq!(
+            Error::Status(Status::internal("NullPointerException")).permission_denied(),
+            None
+        );
+    }
+
+    #[test]
+    fn app_phone_name_carries_sip_prefix() {
+        assert!(phone_matches_sip_user(
+            "SIP/1006.WinClient",
+            "1006.WinClient"
+        ));
+        assert!(phone_matches_sip_user("1006.WinClient", "1006.WinClient"));
+        assert!(!phone_matches_sip_user(
+            "SIP/1004.WinClient",
+            "1006.WinClient"
+        ));
+    }
+}

@@ -1,0 +1,144 @@
+//! Voicemail-Ansicht: Nachrichten der Anlage abhören, verschieben, löschen.
+
+use sf_core::voicemail::{self, Voicemail, VoicemailEvent, Watcher};
+use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_notification::NotificationExt;
+use tokio::sync::{Mutex, mpsc};
+
+use crate::i18n::{t, tf};
+use crate::{AppState, hub};
+
+#[derive(Default)]
+pub struct VoicemailState {
+    watcher: Mutex<Option<Watcher>>,
+}
+
+pub async fn session_ended(app: &AppHandle) {
+    restart(app, None).await;
+}
+
+pub async fn session_started(app: &AppHandle, hub: sf_onehub::OneHub) {
+    restart(app, Some(hub)).await;
+}
+
+async fn restart(app: &AppHandle, hub: Option<sf_onehub::OneHub>) {
+    let state = app.state::<VoicemailState>();
+    *state.watcher.lock().await = hub.map(|hub| {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            while let Some(ev) = rx.recv().await {
+                match ev {
+                    VoicemailEvent::Changed => {
+                        let _ = app.emit("voicemail-changed", ());
+                    }
+                    VoicemailEvent::Created { voicemail } => notify(&app, &voicemail),
+                }
+            }
+        });
+        Watcher::start(hub, tx)
+    });
+}
+
+fn notify(app: &AppHandle, v: &Voicemail) {
+    let who = match (v.name.trim(), v.number.trim()) {
+        ("", "") => t("Unbekannt").to_owned(),
+        ("", n) | (n, "") => n.to_owned(),
+        (name, n) => format!("{name} ({n})"),
+    };
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title(t("Neue Voicemail"))
+        .body(tf("von {who}", &[("who", &who)]))
+        .show()
+    {
+        tracing::warn!(error = %e, "Benachrichtigung nicht angezeigt");
+    }
+}
+
+/// `None`, wenn der Benutzer kein Voicemail-Recht (keine Box) hat.
+#[tauri::command]
+pub async fn voicemails(state: State<'_, AppState>) -> Result<Option<Vec<Voicemail>>, String> {
+    match voicemail::list(&hub(&state).await?).await {
+        Ok(list) => Ok(Some(list)),
+        Err(e) if e.permission_denied().is_some() => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Die Aufnahme als WAV-Bytes (kommt im Frontend als ArrayBuffer an).
+#[tauri::command]
+pub async fn voicemail_audio(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<tauri::ipc::Response, String> {
+    let data = voicemail::download(&hub(&state).await?, &id)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(tauri::ipc::Response::new(data))
+}
+
+#[tauri::command]
+pub async fn voicemail_save(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    name: String,
+) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_title(t("Voicemail speichern"))
+        .set_file_name(format!("{name}.wav"))
+        .add_filter("WAV-Audio", &["wav"])
+        .save_file(move |f| {
+            let _ = tx.send(f);
+        });
+    let Some(path) = rx.await.map_err(|e| e.to_string())? else {
+        return Ok(false);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let data = voicemail::download(&hub(&state).await?, &id)
+        .await
+        .map_err(|e| e.to_string())?;
+    std::fs::write(&path, data)
+        .map_err(|e| tf("Nicht gespeichert: {e}", &[("e", &e.to_string())]))?;
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn voicemail_move(
+    state: State<'_, AppState>,
+    id: String,
+    folder: String,
+) -> Result<(), String> {
+    let folder = voicemail::folder_of(&folder).ok_or(t("Unbekannter Ordner"))?;
+    voicemail::move_to(&hub(&state).await?, &id, folder)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn voicemail_delete(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    voicemail::delete(&hub(&state).await?, &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Die Anlage ruft das Softphone an und spielt die Nachricht vor.
+#[tauri::command]
+pub async fn voicemail_via_phone(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    crate::instances::ensure_free()?;
+    let phone_id = crate::plugins::call::dial_phone_id(&app)
+        .await
+        .ok_or(t("Das Softphone ist nicht aktiv."))?;
+    voicemail::play_via_phone(&hub(&state).await?, &id, &phone_id)
+        .await
+        .map_err(|e| e.to_string())
+}
