@@ -59,11 +59,11 @@ Standbilder gehen ohne.
 
 ## Anmeldung und die Client-ID `windows-app`
 
-STARFACE nimmt nur den OAuth-Client `windows-app` mit der Rücksprungadresse
-`starface-app://login` an. StarCMX meldet sich deshalb mit dieser Client-ID an, registriert
-`starface-app://` aber **nicht** in Windows: Das eigene Anmeldefenster fängt die Rücksprungadresse
-selbst ab, der Link bleibt der offiziellen STARFACE App. Eine eigene Client-ID ginge nur mit
-STARFACE zusammen.
+StarCMX meldet sich mit dem OAuth-Client `windows-app` und der Rücksprungadresse
+`starface-app://login` an. Die Client-ID sagt nur, dass sich ein Windows-Client anmeldet; die
+Anlage nummeriert jeden Client mit einer eigenen vierstelligen Kennung. `starface-app://`
+registriert StarCMX **nicht** in Windows: Das eigene Anmeldefenster fängt die Rücksprungadresse
+selbst ab, der Link bleibt der offiziellen STARFACE App.
 
 ## Bauen
 

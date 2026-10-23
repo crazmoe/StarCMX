@@ -56,11 +56,11 @@ and still images work without it.
 
 ## Login and the `windows-app` client ID
 
-STARFACE only accepts the OAuth client `windows-app` with the return address
-`starface-app://login`. StarCMX therefore signs in with that client ID, but it does **not**
-register `starface-app://` in Windows: its own login window catches the return address itself,
-so the official STARFACE App keeps that link. A client ID of its own would need STARFACE's
-cooperation.
+StarCMX signs in with the OAuth client `windows-app` and the return address
+`starface-app://login`. The client ID only says that a Windows client is signing in; the
+system numbers each client with a four-digit ID of its own. StarCMX does **not** register
+`starface-app://` in Windows: its own login window catches the return address itself, so the
+official STARFACE App keeps that link.
 
 ## Building
 
