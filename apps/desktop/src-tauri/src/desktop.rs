@@ -254,11 +254,18 @@ pub const TEL_SCHEMES: [&str; 3] = ["tel", "callto", "sip"];
 /// Windows: tel:/callto:/sip: für den Benutzer an- bzw. abmelden.
 /// `starface-app://` bleibt der STARFACE App; die Anmeldung von StarCMX
 /// fängt die Rückleitung im eigenen Anmeldefenster ab.
+///
+/// Hat der Benutzer in Windows schon ein anderes Programm für tel: gewählt,
+/// gilt dessen Wahl. Damit StarCMX unter „Standard-Apps“ zur Auswahl
+/// steht, meldet es sich dort ebenfalls an.
 #[cfg(windows)]
 pub fn register_schemes(app: &AppHandle, tel: bool) {
     let app = app.clone();
     std::thread::spawn(move || {
         use tauri_plugin_deep_link::DeepLinkExt;
+        if let Err(e) = default_apps(tel) {
+            tracing::warn!(error = %e, "Nicht unter Standard-Apps angemeldet");
+        }
         let dl = app.deep_link();
         for scheme in TEL_SCHEMES {
             let result = if tel {
@@ -273,6 +280,42 @@ pub fn register_schemes(app: &AppHandle, tel: bool) {
             }
         }
     });
+}
+
+/// Eintrag unter „Standard-Apps“ (RegisteredApplications) mit eigener
+/// ProgID für Rufnummern-Links
+#[cfg(windows)]
+fn default_apps(on: bool) -> std::io::Result<()> {
+    use winreg::RegKey;
+    use winreg::enums::HKEY_CURRENT_USER;
+    const CAPABILITIES: &str = r"Software\StarCMX\Capabilities";
+    const PROG_ID: &str = "StarCMX.Url";
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let (apps, _) = hkcu.create_subkey(r"Software\RegisteredApplications")?;
+    if !on {
+        let _ = apps.delete_value("StarCMX");
+        let _ = hkcu.delete_subkey_all(CAPABILITIES);
+        let _ = hkcu.delete_subkey_all(format!(r"Software\Classes\{PROG_ID}"));
+        return Ok(());
+    }
+    let (prog, _) = hkcu.create_subkey(format!(r"Software\Classes\{PROG_ID}"))?;
+    prog.set_value("", &"StarCMX")?;
+    prog.set_value("URL Protocol", &"")?;
+    let (icon, _) = prog.create_subkey("DefaultIcon")?;
+    icon.set_value("", &format!("{},0", program()))?;
+    let (open, _) = prog.create_subkey(r"shell\open\command")?;
+    open.set_value("", &format!("\"{}\" \"%1\"", program()))?;
+    let (caps, _) = hkcu.create_subkey(CAPABILITIES)?;
+    caps.set_value("ApplicationName", &"StarCMX")?;
+    caps.set_value(
+        "ApplicationDescription",
+        &"StarCMX – Client für STARFACE-Telefonanlagen",
+    )?;
+    let (urls, _) = caps.create_subkey("URLAssociations")?;
+    for scheme in TEL_SCHEMES {
+        urls.set_value(scheme, &PROG_ID)?;
+    }
+    apps.set_value("StarCMX", &CAPABILITIES)
 }
 
 /// Registriert starface-app:// immer, tel:/callto:/sip: nur mit `tel`. Läuft

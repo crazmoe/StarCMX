@@ -4,8 +4,8 @@ Kommandozeile für die STARFACE, auf demselben Kern wie die Desktop-App. Gedacht
 Cronjobs und Monitoring: Chat-Nachrichten senden, den eigenen Status setzen, anrufen und
 Ansagen abspielen.
 
-Fertige Dateien gibt es bei jedem [Release](https://github.com/crazmoe/StarCLX/releases)
-(`sfctl-<version>-linux-x86_64`). Aus dem Quelltext: `cargo build --release -p sfctl`.
+Fertige Dateien gibt es bei jedem [Release](https://github.com/crazmoe/StarCMX/releases)
+(`sfctl-<version>-windows-x64.exe`). Aus dem Quelltext: `cargo build --release -p sfctl`.
 
 ## Anmelden
 
