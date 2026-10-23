@@ -1,14 +1,25 @@
-//! Desktop-App. Anmeldung im Systembrowser mit Rückkehr über
-//! `starface-app://login`, stilles Wiederanmelden mit dem Refresh-Token aus
-//! dem Schlüsselbund, ein Tray-Symbol und das Softphone.
+//! Desktop-App. Anmeldung im eigenen Anmeldefenster, das die Rückkehr über
+//! `starface-app://login` abfängt, stilles Wiederanmelden mit dem
+//! Refresh-Token aus dem Schlüsselbund, ein Tray-Symbol und das Softphone.
+//!
+//! Linux und Windows teilen sich den Code; wo es nicht geht, gibt es je eine
+//! Variante mit derselben Schnittstelle (`instances`, `shortcuts`, `flatpak`).
 
 mod audio;
 mod bus;
 mod certs;
 mod connection;
 mod desktop;
+#[cfg(target_os = "linux")]
+mod flatpak;
+#[cfg(not(target_os = "linux"))]
+#[path = "flatpak_none.rs"]
 mod flatpak;
 mod i18n;
+#[cfg(target_os = "linux")]
+mod instances;
+#[cfg(windows)]
+#[path = "instances_win.rs"]
 mod instances;
 mod log;
 mod login;
@@ -16,6 +27,10 @@ mod plugins;
 mod policy;
 mod presence;
 mod settings;
+#[cfg(target_os = "linux")]
+mod shortcuts;
+#[cfg(windows)]
+#[path = "shortcuts_win.rs"]
 mod shortcuts;
 mod wake;
 mod zoom;
@@ -685,19 +700,15 @@ fn tray_menu(app: &AppHandle, session: Option<&Session>) -> tauri::Result<Menu<t
         .enumerate()
         .filter(|(_, a)| server_allowed(&a.server))
         .collect();
+    type Item<'a> = &'a dyn tauri::menu::IsMenuItem<tauri::Wry>;
+    let mut top: Vec<Item> = vec![&header, &separator, &open, &quick];
+    // Unter Windows gibt es (noch) nur eine Instanz
+    if instances::MULTI {
+        top.push(&another);
+    }
+    let bottom: [Item; 2] = [&logout_item, &quit];
     if accounts.len() < 2 {
-        return Menu::with_items(
-            app,
-            &[
-                &header,
-                &separator,
-                &open,
-                &quick,
-                &another,
-                &logout_item,
-                &quit,
-            ],
-        );
+        return Menu::with_items(app, &[top, bottom.to_vec()].concat());
     }
     let items = accounts
         .iter()
@@ -718,19 +729,8 @@ fn tray_menu(app: &AppHandle, session: Option<&Session>) -> tauri::Result<Menu<t
         .map(|i| i as &dyn tauri::menu::IsMenuItem<tauri::Wry>)
         .collect();
     let switch = Submenu::with_items(app, t("Konto wechseln"), true, &refs)?;
-    Menu::with_items(
-        app,
-        &[
-            &header,
-            &separator,
-            &open,
-            &quick,
-            &another,
-            &switch,
-            &logout_item,
-            &quit,
-        ],
-    )
+    top.push(&switch);
+    Menu::with_items(app, &[top, bottom.to_vec()].concat())
 }
 
 /// Rechnername der Anlage, sonst die Adresse, wie sie ist
@@ -832,7 +832,17 @@ pub fn run() {
 
     let (events_tx, mut events_rx) = mpsc::unbounded_channel();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Unter Windows landet ein weiterer Start (Link, Startmenü) bei der
+    // laufenden App; die Kürzel meldet sie selbst systemweit an.
+    #[cfg(windows)]
+    let builder = builder
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _| {
+            let app = app.clone();
+            std::thread::spawn(move || activate(&app, &argv));
+        }))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+    builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())

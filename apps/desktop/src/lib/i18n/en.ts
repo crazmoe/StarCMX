@@ -339,6 +339,8 @@ const dict: Record<string, string> = {
   "Beim Minimieren nur als Symbol im Infobereich anzeigen": "When minimised, show only as an icon in the system tray",
   "Immer im Vordergrund": "Always on top",
   "Unter Wayland bestimmt der Desktop, ob ein Fenster oben bleibt. Bei GNOME geht es über Alt+Leertaste → „Immer im Vordergrund“.": "Under Wayland the desktop decides whether a window stays on top. In GNOME use Alt+Space → “Always on Top”.",
+  "Tastenkürzel systemweit anmelden": "Register keyboard shortcuts system-wide",
+  "Die Kürzel wirken in allen Programmen, solange StarCMX läuft. Ist eine Kombination schon von einem anderen Programm belegt, meldet StarCMX das beim Speichern.": "The shortcuts work in all applications while StarCMX is running. If a combination is already taken by another application, StarCMX reports it when you save.",
   "Tastenkürzel beim Desktop anmelden": "Register keyboard shortcuts with the desktop",
   "Beim ersten Mal fragt der Desktop nach, ob er die Kürzel übernehmen soll. Sie wirken, solange StarCMX läuft. Ändern lassen sie sich danach in den Systemeinstellungen des Desktops; die Tasten hier sind nur ein Vorschlag für neue Kürzel.": "The first time, the desktop asks whether to accept the shortcuts. They work while StarCMX is running. Afterwards you change them in the desktop's system settings; the keys here are only a suggestion for new shortcuts.",
   "In den Systemeinstellungen ändern …": "Change in system settings …",

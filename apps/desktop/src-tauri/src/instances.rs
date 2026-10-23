@@ -35,6 +35,8 @@ const IFACE: &str = "ch.crazmoe.StarCMX.Instance";
 /// Wie `identifier` in tauri.conf.json; der Name des Hauptclients bleibt
 /// derselbe wie mit tauri-plugin-single-instance.
 const IDENTIFIER: &str = "ch.crazmoe.starcmx";
+/// Mehrere Anlagen gleichzeitig („Weitere Anlage öffnen“)
+pub const MULTI: bool = true;
 /// So lange wartet „Alle beenden“ auf die anderen Instanzen
 const QUIT_WAIT: Duration = Duration::from_secs(15);
 

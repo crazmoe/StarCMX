@@ -1,6 +1,10 @@
 //! Personalisierung und Desktop-Integration: Fensterverhalten,
 //! Erscheinungsbild, Tastenkürzel, Rufnummern-Links und Autostart.
 //!
+//! Unter Windows meldet [`crate::shortcuts`] die Kürzel systemweit an,
+//! der Autostart steht unter `HKCU\…\Run`, und tel:/callto:/sip: werden
+//! für den Benutzer registriert.
+//!
 //! Unter Wayland darf eine App keine globalen Tastenkürzel abfangen. Unter
 //! GNOME werden die Kürzel deshalb als eigene Tastenkombinationen
 //! eingetragen; diese starten `starcmx --action …`, und single-instance
@@ -8,12 +12,16 @@
 //! und das Flathub-Flatpak gehen über das GlobalShortcuts-Portal
 //! ([`crate::shortcuts`]).
 
+#[cfg(target_os = "linux")]
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, Theme};
 
-use crate::i18n::{t, tf};
+#[cfg(target_os = "linux")]
+use crate::i18n::t;
+#[cfg(target_os = "linux")]
+use crate::i18n::tf;
 use crate::settings::Prefs;
 
 /// Aktionen, die per Tastenkürzel oder Kommandozeile ausgelöst werden
@@ -70,16 +78,20 @@ pub struct DesktopInfo {
     gnome: bool,
     /// Kürzel über das GlobalShortcuts-Portal (KDE und andere)
     portal: bool,
+    /// Kürzel systemweit unter Windows
+    windows: bool,
     /// Befehl, den man in anderen Desktops selbst auf eine Taste legen kann
     command: String,
 }
 
+#[cfg(target_os = "linux")]
 fn is_gnome() -> bool {
     std::env::var("XDG_CURRENT_DESKTOP")
         .is_ok_and(|d| d.split(':').any(|p| p.eq_ignore_ascii_case("gnome")))
 }
 
 /// Wie die Kürzel beim Desktop landen
+#[cfg(target_os = "linux")]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Backend {
     /// Eigene Tastenkombinationen in den GNOME-Einstellungen
@@ -91,6 +103,7 @@ enum Backend {
 
 /// GNOME-Einstellungen, solange sie erreichbar sind (auch bei GNOME vor 48,
 /// das noch kein Portal kennt); sonst das Portal, wo es eines gibt.
+#[cfg(target_os = "linux")]
 fn backend() -> Backend {
     if is_gnome() && !crate::flatpak::sandboxed() {
         Backend::Gnome
@@ -101,6 +114,7 @@ fn backend() -> Backend {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn is_wayland() -> bool {
     std::env::var("XDG_SESSION_TYPE").is_ok_and(|t| t == "wayland")
         || std::env::var_os("WAYLAND_DISPLAY").is_some()
@@ -128,6 +142,7 @@ fn command_for(action: &str) -> String {
     format!("\"{}\" --action {action}", program())
 }
 
+#[cfg(target_os = "linux")]
 #[tauri::command]
 pub fn desktop_info() -> DesktopInfo {
     let backend = backend();
@@ -135,6 +150,19 @@ pub fn desktop_info() -> DesktopInfo {
         wayland: is_wayland(),
         gnome: backend == Backend::Gnome,
         portal: backend == Backend::Portal,
+        windows: false,
+        command: command_for("<aktion>"),
+    }
+}
+
+#[cfg(windows)]
+#[tauri::command]
+pub fn desktop_info() -> DesktopInfo {
+    DesktopInfo {
+        wayland: false,
+        gnome: false,
+        portal: false,
+        windows: true,
         command: command_for("<aktion>"),
     }
 }
@@ -198,6 +226,17 @@ pub fn run_action(app: &AppHandle, action: &str) {
     );
 }
 
+#[cfg(windows)]
+fn read_text(selection: bool) -> Option<String> {
+    let text = if selection {
+        crate::shortcuts::copy_selection()
+    } else {
+        arboard::Clipboard::new().ok()?.get_text().ok()
+    };
+    text.filter(|t| !t.trim().is_empty())
+}
+
+#[cfg(target_os = "linux")]
 fn read_text(primary: bool) -> Option<String> {
     let mut cb = arboard::Clipboard::new().ok()?;
     let text = if primary {
@@ -212,8 +251,33 @@ fn read_text(primary: bool) -> Option<String> {
 /// Rufnummern-Links, die StarCMX auf Wunsch öffnet
 pub const TEL_SCHEMES: [&str; 3] = ["tel", "callto", "sip"];
 
+/// Windows: tel:/callto:/sip: für den Benutzer an- bzw. abmelden.
+/// `starface-app://` bleibt der STARFACE App; die Anmeldung von StarCMX
+/// fängt die Rückleitung im eigenen Anmeldefenster ab.
+#[cfg(windows)]
+pub fn register_schemes(app: &AppHandle, tel: bool) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        use tauri_plugin_deep_link::DeepLinkExt;
+        let dl = app.deep_link();
+        for scheme in TEL_SCHEMES {
+            let result = if tel {
+                dl.register(scheme)
+            } else if dl.is_registered(scheme).unwrap_or(false) {
+                dl.unregister(scheme)
+            } else {
+                Ok(())
+            };
+            if let Err(e) = result {
+                tracing::warn!(error = %e, scheme, "Rufnummern-Link nicht (ab)gemeldet");
+            }
+        }
+    });
+}
+
 /// Registriert starface-app:// immer, tel:/callto:/sip: nur mit `tel`. Läuft
 /// im Hintergrund (xdg-mime ist langsam); Fehler landen nur im Log.
+#[cfg(target_os = "linux")]
 pub fn register_schemes(app: &AppHandle, tel: bool) {
     // Wichtig für AppImage und `tauri dev`; das .deb bringt eine eigene
     // .desktop-Datei mit. Fehlt z. B. xdg-mime, startet die App trotzdem.
@@ -238,7 +302,6 @@ pub fn register_schemes(app: &AppHandle, tel: bool) {
         });
         return;
     }
-    #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
     {
         let app = app.clone();
         std::thread::spawn(move || {
@@ -261,8 +324,6 @@ pub fn register_schemes(app: &AppHandle, tel: bool) {
             }
         });
     }
-    #[cfg(not(any(target_os = "linux", all(debug_assertions, windows))))]
-    let _ = (app, tel);
 }
 
 /// Ist das ein tel:-, callto:- oder sip:-Link?
@@ -310,6 +371,7 @@ fn percent_decode(s: &str) -> String {
 }
 
 /// `$XDG_CONFIG_HOME/autostart/starcmx.desktop` (sonst ~/.config/autostart)
+#[cfg(target_os = "linux")]
 fn autostart_file() -> Option<PathBuf> {
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .filter(|v| !v.is_empty())
@@ -320,6 +382,7 @@ fn autostart_file() -> Option<PathBuf> {
 
 /// Pfad als Argument der Exec-Zeile: in Anführungszeichen, Sonderzeichen
 /// maskiert, danach `\` für den Zeichenketten-Wert verdoppelt, `%` als `%%`.
+#[cfg(target_os = "linux")]
 pub(crate) fn exec_quote(path: &str) -> String {
     let mut q = String::from("\"");
     for c in path.chars().filter(|c| !c.is_control()) {
@@ -337,6 +400,7 @@ pub(crate) fn exec_quote(path: &str) -> String {
     q
 }
 
+#[cfg(target_os = "linux")]
 fn autostart_entry(program: &str) -> String {
     format!(
         "[Desktop Entry]\nType=Application\nName=StarCMX\nExec={}\nIcon=starcmx\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
@@ -348,6 +412,7 @@ fn autostart_entry(program: &str) -> String {
 /// aufgerufen, damit der Pfad nach einem Update stimmt. Als Flatpak macht
 /// das das Background-Portal; ausgeschaltet wird es dort nur bei einer
 /// Änderung gefragt, sonst käme die Rückfrage bei jedem Start.
+#[cfg(target_os = "linux")]
 pub fn apply_autostart(on: bool, changed: bool) -> Result<(), String> {
     if crate::flatpak::app_id().is_some() {
         return if on || changed {
@@ -376,9 +441,41 @@ pub fn apply_autostart(on: bool, changed: bool) -> Result<(), String> {
     }
 }
 
+/// Windows: Eintrag `StarCMX` unter `HKCU\Software\Microsoft\Windows\
+/// CurrentVersion\Run`. Beim Start erneut geschrieben, damit der Pfad nach
+/// einem Update stimmt.
+#[cfg(windows)]
+pub fn apply_autostart(on: bool, _changed: bool) -> Result<(), String> {
+    use winreg::RegKey;
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
+    const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+    const NAME: &str = "StarCMX";
+    let (key, _) = RegKey::predef(HKEY_CURRENT_USER)
+        .create_subkey_with_flags(RUN, KEY_READ | KEY_WRITE)
+        .map_err(|e| e.to_string())?;
+    if on {
+        let value = format!("\"{}\"", program());
+        if key
+            .get_value::<String, _>(NAME)
+            .is_ok_and(|old| old == value)
+        {
+            return Ok(());
+        }
+        key.set_value(NAME, &value).map_err(|e| e.to_string())
+    } else {
+        match key.delete_value(NAME) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+            _ => Ok(()),
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
 const MEDIA_KEYS: &str = "org.gnome.settings-daemon.plugins.media-keys";
+#[cfg(target_os = "linux")]
 const KEYBINDING_DIR: &str = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings";
 
+#[cfg(target_os = "linux")]
 fn gsettings(args: &[&str]) -> Result<String, String> {
     let out = crate::flatpak::host_command("gsettings")
         .args(args)
@@ -391,11 +488,13 @@ fn gsettings(args: &[&str]) -> Result<String, String> {
 }
 
 /// GVariant-Zeichenkette
+#[cfg(target_os = "linux")]
 fn quote(s: &str) -> String {
     format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
 }
 
 /// Pfade aus einer GVariant-Liste wie `['/a/', '/b/']` oder `@as []`
+#[cfg(target_os = "linux")]
 fn parse_list(s: &str) -> Vec<String> {
     s.split('\'')
         .skip(1)
@@ -404,11 +503,13 @@ fn parse_list(s: &str) -> Vec<String> {
         .collect()
 }
 
+#[cfg(target_os = "linux")]
 fn own_path(action: &str) -> String {
     format!("{KEYBINDING_DIR}/starface-{action}/")
 }
 
 /// Neue Liste: fremde Einträge bleiben, eigene werden ersetzt.
+#[cfg(target_os = "linux")]
 fn merged_list(current: &[String], hotkeys: &Hotkeys) -> Vec<String> {
     let mut list: Vec<String> = current
         .iter()
@@ -429,6 +530,7 @@ fn merged_list(current: &[String], hotkeys: &Hotkeys) -> Vec<String> {
 /// Neuer Hauptclient nach einem Ausfall: Kürzel über das Portal hängen an
 /// der Verbindung des alten und müssen neu angemeldet werden. GNOME-Kürzel
 /// starten `starcmx --action …` und landen ohnehin beim Hauptclient.
+#[cfg(target_os = "linux")]
 pub fn take_over_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) {
     if hotkeys.enabled
         && backend() == Backend::Portal
@@ -438,7 +540,14 @@ pub fn take_over_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) {
     }
 }
 
+/// Meldet die Tastenkürzel systemweit an bzw. ab.
+#[cfg(windows)]
+pub fn apply_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {
+    crate::shortcuts::apply(app, hotkeys)
+}
+
 /// Trägt die Tastenkürzel beim Desktop ein bzw. entfernt sie wieder.
+#[cfg(target_os = "linux")]
 pub fn apply_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {
     match backend() {
         Backend::Gnome => apply_gnome(hotkeys),
@@ -451,6 +560,7 @@ pub fn apply_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {
 
 /// Trägt die Tastenkürzel in GNOME ein bzw. entfernt sie wieder. Andere
 /// Tastenkombinationen des Benutzers bleiben unangetastet.
+#[cfg(target_os = "linux")]
 fn apply_gnome(hotkeys: &Hotkeys) -> Result<(), String> {
     let current = parse_list(&gsettings(&["get", MEDIA_KEYS, "custom-keybindings"])?);
     for (action, label) in ACTIONS {
@@ -495,6 +605,7 @@ mod tests {
         assert_eq!(action_from_args(&args(&["sf"])), None);
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn keybinding_list() {
         assert!(parse_list("@as []").is_empty());
@@ -519,6 +630,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn gvariant_quoting() {
         assert_eq!(quote("a'b"), r"'a\'b'");
@@ -550,6 +662,7 @@ mod tests {
         assert!(is_tel_url("callto:x") && !is_tel_url("https://x"));
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn autostart_exec() {
         let e = autostart_entry("/opt/Star CLX/starcmx");

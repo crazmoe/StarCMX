@@ -339,6 +339,8 @@ const dict: Record<string, string> = {
   "Beim Minimieren nur als Symbol im Infobereich anzeigen": "Quando ridotto, mostra solo come icona nell'area di notifica",
   "Immer im Vordergrund": "Sempre in primo piano",
   "Unter Wayland bestimmt der Desktop, ob ein Fenster oben bleibt. Bei GNOME geht es über Alt+Leertaste → „Immer im Vordergrund“.": "Con Wayland è il desktop a decidere se una finestra resta in primo piano. In GNOME: Alt+Spazio → «Sempre in primo piano».",
+  "Tastenkürzel systemweit anmelden": "Registra le scorciatoie da tastiera per tutto il sistema",
+  "Die Kürzel wirken in allen Programmen, solange StarCMX läuft. Ist eine Kombination schon von einem anderen Programm belegt, meldet StarCMX das beim Speichern.": "Le scorciatoie funzionano in tutte le applicazioni finché StarCMX è in esecuzione. Se una combinazione è già usata da un’altra applicazione, StarCMX lo segnala al salvataggio.",
   "Tastenkürzel beim Desktop anmelden": "Registra le scorciatoie da tastiera presso il desktop",
   "Beim ersten Mal fragt der Desktop nach, ob er die Kürzel übernehmen soll. Sie wirken, solange StarCMX läuft. Ändern lassen sie sich danach in den Systemeinstellungen des Desktops; die Tasten hier sind nur ein Vorschlag für neue Kürzel.": "La prima volta il desktop chiede se accettare le scorciatoie. Funzionano finché StarCMX è in esecuzione. In seguito si modificano nelle impostazioni di sistema del desktop; i tasti indicati qui sono solo una proposta per le nuove scorciatoie.",
   "In den Systemeinstellungen ändern …": "Modifica nelle impostazioni di sistema …",

@@ -12,6 +12,9 @@
 //! erste Ordner in `$XDG_CONFIG_DIRS` hat Vorrang; gesperrte Werte kann ein
 //! späterer Ordner nicht mehr ändern. Als Flatpak liest die App zusätzlich
 //! `/run/host/etc/xdg` (sichtbar mit `--filesystem=host-etc:ro`).
+//!
+//! Unter Windows liegt die Datei in `%ProgramData%\StarCMX` (meist
+//! `C:\ProgramData\StarCMX\starcmxrc`).
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -53,6 +56,14 @@ pub fn get() -> &'static Policy {
 }
 
 /// Ordner mit Vorgaben, wichtigster zuerst
+#[cfg(windows)]
+fn config_dirs() -> Vec<PathBuf> {
+    let base = std::env::var_os("ProgramData").unwrap_or_else(|| r"C:\ProgramData".into());
+    vec![PathBuf::from(base).join("StarCMX")]
+}
+
+/// Ordner mit Vorgaben, wichtigster zuerst
+#[cfg(target_os = "linux")]
 fn config_dirs() -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = std::env::var("XDG_CONFIG_DIRS")
         .ok()

@@ -155,6 +155,7 @@ pub fn set_verbose(verbose: bool) {
 }
 
 /// Betriebssystem, Version und unter Linux Distribution und Desktop
+#[cfg_attr(not(target_os = "linux"), allow(unused_mut, clippy::useless_vec))]
 fn system_info() -> String {
     let mut lines = vec![format!(
         "{} {}",
