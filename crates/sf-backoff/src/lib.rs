@@ -1,7 +1,7 @@
 //! Wartezeit vor dem nächsten Verbindungsversuch.
 //!
 //! Die STARFACE begrenzt ab der nächsten Version die Anfragen pro Client
-//! (Rate-Limits). Damit StarCLX dort nicht anschlägt:
+//! (Rate-Limits). Damit StarCMX dort nicht anschlägt:
 //! - Die Wartezeit wächst exponentiell und wird erst zurückgesetzt, wenn eine
 //!   Verbindung eine Weile stabil lief. Schliesst die Anlage einen Stream
 //!   sofort wieder, verbindet der Client also nicht im Sekundentakt neu.

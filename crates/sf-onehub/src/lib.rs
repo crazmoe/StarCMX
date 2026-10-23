@@ -34,7 +34,7 @@ pub const SIP_DEVICE_ID_MAC: &str = "E22FF5B3-38ED-4A5E-966A-80B4785A2FF7";
 /// Ersatz, wenn die Anlage das Linux-App-Telefon verweigert: Ohne das Recht
 /// `uci_autoprovisioning` legt sie es nicht an, die Telefone der Desktop-Apps
 /// aber schon. Genommen wird das einer App, die auf diesem System nicht
-/// offiziell läuft, damit StarCLX der offiziellen App auf demselben Rechner
+/// offiziell läuft, damit StarCMX der offiziellen App auf demselben Rechner
 /// nicht das Telefon wegnimmt.
 #[cfg(windows)]
 pub const SIP_DEVICE_ID_FALLBACK: &str = SIP_DEVICE_ID_MAC;
@@ -196,7 +196,7 @@ impl OneHub {
         // dann ewig; mit Pings brechen sie ab und verbinden neu.
         let channel = Endpoint::from_shared(format!("https://{host}:{port}"))?
             .tls_config_with_verifier(ClientTlsConfig::new().domain_name(host), sf_tls::verifier())?
-            .user_agent(concat!("starclx/", env!("CARGO_PKG_VERSION")))?
+            .user_agent(concat!("starcmx/", env!("CARGO_PKG_VERSION")))?
             .connect_timeout(Duration::from_secs(10))
             .tcp_keepalive(Some(Duration::from_secs(20)))
             .http2_keep_alive_interval(KEEPALIVE_INTERVAL)

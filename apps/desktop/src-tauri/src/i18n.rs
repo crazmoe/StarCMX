@@ -90,15 +90,15 @@ const TEXTS: &[(&str, [&str; 3])] = &[
         ["not signed in", "non connecté", "non connesso"],
     ),
     (
-        "StarCLX beenden",
-        ["Quit StarCLX", "Quitter StarCLX", "Esci da StarCLX"],
+        "StarCMX beenden",
+        ["Quit StarCMX", "Quitter StarCMX", "Esci da StarCMX"],
     ),
     (
-        "Es laufen noch {n} weitere StarCLX für andere Anlagen. Sie werden mit beendet.",
+        "Es laufen noch {n} weitere StarCMX für andere Anlagen. Sie werden mit beendet.",
         [
-            "{n} more StarCLX for other phone systems are running. They will be quit as well.",
-            "{n} autres StarCLX pour d’autres systèmes téléphoniques sont ouverts. Ils seront également fermés.",
-            "Sono aperti altri {n} StarCLX per altri centralini. Verranno chiusi anche loro.",
+            "{n} more StarCMX for other phone systems are running. They will be quit as well.",
+            "{n} autres StarCMX pour d’autres systèmes téléphoniques sont ouverts. Ils seront également fermés.",
+            "Sono aperti altri {n} StarCMX per altri centralini. Verranno chiusi anche loro.",
         ],
     ),
     (
@@ -163,27 +163,27 @@ const TEXTS: &[(&str, [&str; 3])] = &[
         ],
     ),
     (
-        "StarCLX: abgemeldet",
+        "StarCMX: abgemeldet",
         [
-            "StarCLX: signed out",
-            "StarCLX : déconnecté",
-            "StarCLX: disconnesso",
+            "StarCMX: signed out",
+            "StarCMX : déconnecté",
+            "StarCMX: disconnesso",
         ],
     ),
     (
-        "StarCLX Schnellwahl",
+        "StarCMX Schnellwahl",
         [
-            "StarCLX Quick dial",
-            "StarCLX Numérotation rapide",
-            "StarCLX Selezione rapida",
+            "StarCMX Quick dial",
+            "StarCMX Numérotation rapide",
+            "StarCMX Selezione rapida",
         ],
     ),
     (
-        "StarCLX – Anmelden",
+        "StarCMX – Anmelden",
         [
-            "StarCLX – Sign in",
-            "StarCLX – Connexion",
-            "StarCLX – Accesso",
+            "StarCMX – Sign in",
+            "StarCMX – Connexion",
+            "StarCMX – Accesso",
         ],
     ),
     ("Abgemeldet", ["Signed out", "Déconnecté", "Disconnesso"]),
@@ -632,11 +632,11 @@ const TEXTS: &[(&str, [&str; 3])] = &[
         ],
     ),
     (
-        "StarCLX beim Anmelden starten",
+        "StarCMX beim Anmelden starten",
         [
-            "Start StarCLX at login",
-            "Démarrer StarCLX à l'ouverture de session",
-            "Avvia StarCLX all'accesso",
+            "Start StarCMX at login",
+            "Démarrer StarCMX à l'ouverture de session",
+            "Avvia StarCMX all'accesso",
         ],
     ),
     (

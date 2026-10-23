@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in StarCLX does not work as expected
+description: Something in StarCMX does not work as expected
 labels: ["bug"]
 body:
   - type: markdown
@@ -34,7 +34,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: StarCLX version
+      label: StarCMX version
       description: Shown at the bottom of the Settings.
       placeholder: "1.5.0"
     validations:

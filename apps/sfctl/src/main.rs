@@ -842,7 +842,7 @@ async fn start_softphone(
         );
     }
 
-    let software = concat!("starclx/", env!("CARGO_PKG_VERSION"));
+    let software = concat!("starcmx/", env!("CARGO_PKG_VERSION"));
     let (phone, mut sip) = sf_sip::Softphone::start(config, software)?;
     phone.add_account(&sf_sip::Account {
         user: creds.user.clone(),

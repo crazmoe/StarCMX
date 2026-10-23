@@ -1,7 +1,7 @@
 //! Protokoll für Fehlerberichte: wie bisher auf stderr (Filter aus
 //! `RUST_LOG`), dazu immer eine Datei im Log-Ordner der App, die man in den
 //! Einstellungen speichern und uns schicken kann. Die Datei wechselt bei
-//! [`MAX_SIZE`]; die vorige bleibt als `starclx.1.log` erhalten.
+//! [`MAX_SIZE`]; die vorige bleibt als `starcmx.1.log` erhalten.
 //!
 //! Bis der Log-Ordner feststeht (Tauri-Setup), sammelt ein Puffer die
 //! Meldungen, damit auch Fehler beim Start in der Datei landen.
@@ -18,15 +18,15 @@ use tracing_subscriber::{EnvFilter, Layer, fmt, reload};
 
 use crate::i18n::t;
 
-const FILE: &str = "starclx.log";
-const PREVIOUS: &str = "starclx.1.log";
+const FILE: &str = "starcmx.log";
+const PREVIOUS: &str = "starcmx.1.log";
 const MAX_SIZE: u64 = 5 * 1024 * 1024;
 /// Obergrenze für den Puffer bis zum Öffnen der Datei
 const EARLY_MAX: usize = 256 * 1024;
 
 const NORMAL: &str = "info";
 /// Ausführlich: eigene Crates mit Anruf- und Verbindungsdetails
-const VERBOSE: &str = "info,starclx_lib=debug,sf_core=debug,sf_onehub=debug,sf_auth=debug,\
+const VERBOSE: &str = "info,starcmx_lib=debug,sf_core=debug,sf_onehub=debug,sf_auth=debug,\
                        sf_chat=debug,sf_sip=debug,sf_audio=debug,sf_busylight=debug,sf_headset=debug";
 
 enum Sink {
@@ -119,7 +119,7 @@ pub fn open(app: &AppHandle) {
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
         system = %system_info().replace('\n', "; "),
-        "StarCLX gestartet"
+        "StarCMX gestartet"
     );
 }
 
@@ -191,7 +191,7 @@ fn system_info() -> String {
 /// Inhalt für „Protokoll speichern“: Kopf, vorige und aktuelle Datei
 fn report(dir: &Path) -> Vec<u8> {
     let mut out = format!(
-        "StarCLX {}\n{}\n\n",
+        "StarCMX {}\n{}\n\n",
         env!("CARGO_PKG_VERSION"),
         system_info()
     )
@@ -223,7 +223,7 @@ pub async fn log_export(app: AppHandle) -> Result<Option<String>, String> {
     app.dialog()
         .file()
         .set_title(t("Protokoll speichern"))
-        .set_file_name("starclx-log.txt")
+        .set_file_name("starcmx-log.txt")
         .add_filter(t("Textdatei"), &["txt", "log"])
         .save_file(move |f| {
             let _ = tx.send(f);
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn rotate_keeps_previous_file() {
-        let dir = std::env::temp_dir().join(format!("starclx-log-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("starcmx-log-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(FILE), "alt\n").unwrap();
         let mut f = rotate(&dir).unwrap();
@@ -266,7 +266,7 @@ mod tests {
             "alt\n"
         );
         let r = String::from_utf8(report(&dir)).unwrap();
-        assert!(r.starts_with("StarCLX "));
+        assert!(r.starts_with("StarCMX "));
         assert!(r.ends_with("alt\nneu\n"));
         std::fs::remove_dir_all(&dir).unwrap();
     }

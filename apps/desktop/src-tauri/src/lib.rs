@@ -101,7 +101,7 @@ pub(crate) fn show_quick_window(app: &AppHandle) {
     }
     let builder =
         tauri::WebviewWindowBuilder::new(app, "quick", tauri::WebviewUrl::App("quick".into()))
-            .title(t("StarCLX Schnellwahl"))
+            .title(t("StarCMX Schnellwahl"))
             .inner_size(340.0, 480.0)
             .min_inner_size(260.0, 240.0);
     if let Err(e) = instances::webview(app, builder).build() {
@@ -156,7 +156,7 @@ fn quick_hide(app: AppHandle) {
 }
 
 /// Tooltip des Tray-Symbols (angemeldeter Benutzer oder „abgemeldet“) und,
-/// wenn mehrere StarCLX laufen, die Anlage im Fenstertitel
+/// wenn mehrere StarCMX laufen, die Anlage im Fenstertitel
 fn set_tray_tooltip(app: &AppHandle, session: Option<&Session>) {
     let label = session.map(|s| {
         (
@@ -774,7 +774,7 @@ fn relabel(app: &AppHandle, session: Option<&Session>) {
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let menu = tray_menu(app, None)?;
     let mut tray = TrayIconBuilder::with_id(instances::tray_id())
-        .tooltip(t("StarCLX: abgemeldet"))
+        .tooltip(t("StarCMX: abgemeldet"))
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main_window(app),

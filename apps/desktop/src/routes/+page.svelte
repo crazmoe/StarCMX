@@ -140,7 +140,7 @@
     return () => offs.forEach((p) => p.then((off) => off()));
   });
 
-  /** Tastenkürzel aus GNOME (`starclx --action …`) */
+  /** Tastenkürzel aus GNOME (`starcmx --action …`) */
   function hotkey(action: string, text: string | null) {
     const calls = phone.status.calls;
     switch (action) {
@@ -207,7 +207,7 @@
     loadAccounts();
   }
 
-  /** Anlage vom System vorgegeben (/etc/xdg/starclxrc) */
+  /** Anlage vom System vorgegeben (/etc/xdg/starcmxrc) */
   let serverLocked = $state(false);
 
   /** Anmeldung im Systembrowser statt im eigenen Fenster */
@@ -391,7 +391,7 @@
         <button class="arrange" title={t("Anordnung bearbeiten")} onclick={editStart}><Icon name="edit" size={20} /></button>
       {/if}
       <CallManager />
-      <div class="brand"><img src={logo} alt="" /> StarCLX</div>
+      <div class="brand"><img src={logo} alt="" /> StarCMX</div>
     </header>
 
     {#if !free || editing}
@@ -426,7 +426,7 @@
       {#if !connection.online}
         <p class="banner offline" role="status">
           <span class="reg error"></span>
-          <span><b>{t("Keine Verbindung zur Anlage")}</b> · {t("StarCLX verbindet sich automatisch neu, sobald die Anlage wieder erreichbar ist (z. B. VPN wieder verbunden).")}</span>
+          <span><b>{t("Keine Verbindung zur Anlage")}</b> · {t("StarCMX verbindet sich automatisch neu, sobald die Anlage wieder erreichbar ist (z. B. VPN wieder verbunden).")}</span>
         </p>
       {:else if phone.status.state === "error" || (phone.status.state === "off" && phone.status.detail)}
         <p class="banner"><span class="reg {phone.status.state}"></span>{stateText[phone.status.state]}{#if phone.status.detail}: {t(phone.status.detail)}{/if}</p>
@@ -471,7 +471,7 @@
   {/if}
 {:else}
 <main class="login">
-  <div class="brand big"><img src={logo} alt="" /> StarCLX</div>
+  <div class="brand big"><img src={logo} alt="" /> StarCMX</div>
   {#if phase === "restoring"}
     <p>{t("Verbinde …")}</p>
   {:else}

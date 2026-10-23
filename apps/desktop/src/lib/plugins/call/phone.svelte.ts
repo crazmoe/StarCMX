@@ -38,7 +38,7 @@ export const phone = $state({
   status: { state: "off", detail: "", calls: [], muted: false, callback: "", control: false, sip_certificate: "" } as PhoneStatus,
   notice: "",
   now: Date.now(),
-  /** Anlage, über die eine andere StarCLX-Instanz gerade telefoniert;
+  /** Anlage, über die eine andere StarCMX-Instanz gerade telefoniert;
    *  solange sind Annehmen und Wählen hier gesperrt */
   busyElsewhere: null as string | null,
 });

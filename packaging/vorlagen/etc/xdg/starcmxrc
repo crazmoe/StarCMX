@@ -1,9 +1,9 @@
-# Systemweite Vorgaben für StarCLX
+# Systemweite Vorgaben für StarCMX
 #
-# Ablage: /etc/xdg/starclxrc (bzw. ein Ordner aus $XDG_CONFIG_DIRS)
+# Ablage: /etc/xdg/starcmxrc (bzw. ein Ordner aus $XDG_CONFIG_DIRS)
 # Format: wie die Konfigdateien von KDE (KConfig). Mit KDE-Werkzeugen lässt
 # sich die Datei auch schreiben, z. B.:
-#   kwriteconfig6 --file /etc/xdg/starclxrc --group General --key server https://pbx.firma.ch
+#   kwriteconfig6 --file /etc/xdg/starcmxrc --group General --key server https://pbx.firma.ch
 #
 #   schluessel=wert       Startwert: gilt, bis der Benutzer die Einstellung ändert
 #   schluessel[$i]=wert   gesperrt (KDE-Kiosk): gilt immer, in der App ausgegraut

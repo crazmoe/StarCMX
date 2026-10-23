@@ -125,7 +125,7 @@ fn split_credentials(url: &str) -> Result<(Url, Option<(String, String)>)> {
 
 fn http_client() -> Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
-        .user_agent(concat!("starclx/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("starcmx/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(10))
         .read_timeout(STALL)
         .tls_backend_preconfigured(sf_tls::client_config())

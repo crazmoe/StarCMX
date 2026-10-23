@@ -1,4 +1,4 @@
-//! Mehrere StarCLX gleichzeitig, eins je Anlage.
+//! Mehrere StarCMX gleichzeitig, eins je Anlage.
 //!
 //! Jede Instanz läuft mit einem Profil (`--profile 2`) und hat eigene
 //! Einstellungs-, Daten- und Log-Ordner; das Standardprofil benutzt die
@@ -30,11 +30,11 @@ use zbus::fdo::{RequestNameFlags, RequestNameReply};
 use crate::bus::{self, Event};
 use crate::i18n::{t, tf};
 
-const PATH: &str = "/ch/crazmoe/StarCLX";
-const IFACE: &str = "ch.crazmoe.StarCLX.Instance";
+const PATH: &str = "/ch/crazmoe/StarCMX";
+const IFACE: &str = "ch.crazmoe.StarCMX.Instance";
 /// Wie `identifier` in tauri.conf.json; der Name des Hauptclients bleibt
 /// derselbe wie mit tauri-plugin-single-instance.
-const IDENTIFIER: &str = "ch.crazmoe.starface-linuxclient";
+const IDENTIFIER: &str = "ch.crazmoe.starcmx";
 /// So lange wartet „Alle beenden“ auf die anderen Instanzen
 const QUIT_WAIT: Duration = Duration::from_secs(15);
 
@@ -448,7 +448,7 @@ fn owner_changed(name: &str, new_owner: Option<&str>, own: Option<&str>) {
 /// Auf dem Bus erreichbare Methoden; dieselben in jeder Instanz.
 struct Iface;
 
-#[zbus::interface(name = "ch.crazmoe.StarCLX.Instance")]
+#[zbus::interface(name = "ch.crazmoe.StarCMX.Instance")]
 impl Iface {
     /// Kommandozeile eines weiteren Starts (Link, Tastenkürzel oder nur
     /// „Fenster zeigen“)
@@ -789,7 +789,7 @@ pub fn send_headset_action(profile: &str, action: &crate::plugins::headset::Acti
 pub fn forward_link(url: &str) {
     let others = OTHERS.lock().unwrap().clone();
     for p in others {
-        send_profile(&p, "Activate", vec!["starclx".to_owned(), url.to_owned()]);
+        send_profile(&p, "Activate", vec!["starcmx".to_owned(), url.to_owned()]);
     }
 }
 
@@ -859,11 +859,11 @@ pub fn set_label(app: &AppHandle, label: Option<(String, String)>) {
 }
 
 /// Name, unter dem sich weitere Profile beim Desktop melden (Wayland
-/// `app_id`, unter X11 `WM_CLASS`); das Standardprofil bleibt `starclx`.
+/// `app_id`, unter X11 `WM_CLASS`); das Standardprofil bleibt `starcmx`.
 /// Als Flatpak bestimmt die Sandbox die ID, dort geht das nicht.
 fn desktop_id(profile: &str) -> Option<String> {
     (!profile.is_empty() && crate::flatpak::app_id().is_none())
-        .then(|| format!("starclx-p{profile}"))
+        .then(|| format!("starcmx-p{profile}"))
 }
 
 /// Unter Wayland nimmt die Taskleiste das Symbol aus der .desktop-Datei zur
@@ -891,7 +891,7 @@ pub fn install_desktop_entry(app: &AppHandle, host: Option<&str>) {
             std::fs::read_to_string(&file)
                 .ok()?
                 .lines()
-                .find_map(|l| l.strip_prefix("X-StarCLX-Host=").map(str::to_owned))
+                .find_map(|l| l.strip_prefix("X-StarCMX-Host=").map(str::to_owned))
         });
         let program = program().ok_or("Programmpfad unbekannt")?;
         let entry = desktop_entry(
@@ -914,15 +914,15 @@ pub fn install_desktop_entry(app: &AppHandle, host: Option<&str>) {
 
 fn desktop_entry(id: &str, profile: &str, host: Option<&str>, program: &str, icon: &str) -> String {
     let name = match host {
-        Some(h) => format!("StarCLX – {h}"),
-        None => format!("StarCLX {profile}"),
+        Some(h) => format!("StarCMX – {h}"),
+        None => format!("StarCMX {profile}"),
     };
     let mut entry = format!(
         "[Desktop Entry]\nType=Application\nName={name}\nExec={} --profile {profile}\nIcon={icon}\nStartupWMClass={id}\nNoDisplay=true\nTerminal=false\n",
         crate::desktop::exec_quote(program)
     );
     if let Some(h) = host {
-        entry.push_str(&format!("X-StarCLX-Host={h}\n"));
+        entry.push_str(&format!("X-StarCMX-Host={h}\n"));
     }
     entry
 }
@@ -990,20 +990,20 @@ impl Titles {
     fn new(label: Option<&(String, String)>, several: bool) -> Self {
         let host = label.map_or(t("nicht angemeldet"), |(h, _)| h.as_str());
         let tooltip = match (label, several) {
-            (None, _) => t("StarCLX: abgemeldet").to_owned(),
-            (Some((_, name)), false) => format!("StarCLX: {name}"),
-            (Some((host, name)), true) => format!("StarCLX ({host}): {name}"),
+            (None, _) => t("StarCMX: abgemeldet").to_owned(),
+            (Some((_, name)), false) => format!("StarCMX: {name}"),
+            (Some((host, name)), true) => format!("StarCMX ({host}): {name}"),
         };
         if several {
             Self {
-                main: format!("StarCLX – {host}"),
-                quick: format!("{} – {host}", t("StarCLX Schnellwahl")),
+                main: format!("StarCMX – {host}"),
+                quick: format!("{} – {host}", t("StarCMX Schnellwahl")),
                 tooltip,
             }
         } else {
             Self {
-                main: "StarCLX".into(),
-                quick: t("StarCLX Schnellwahl").into(),
+                main: "StarCMX".into(),
+                quick: t("StarCMX Schnellwahl").into(),
                 tooltip,
             }
         }
@@ -1030,10 +1030,10 @@ pub fn quit(app: &AppHandle) {
     let handle = app.clone();
     app.dialog()
         .message(tf(
-            "Es laufen noch {n} weitere StarCLX für andere Anlagen. Sie werden mit beendet.",
+            "Es laufen noch {n} weitere StarCMX für andere Anlagen. Sie werden mit beendet.",
             &[("n", &n.to_string())],
         ))
-        .title(t("StarCLX beenden"))
+        .title(t("StarCMX beenden"))
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::OkCancelCustom(
             t("Alle beenden").into(),
@@ -1173,15 +1173,15 @@ mod tests {
 
     #[test]
     fn bus_names() {
-        let n = Names::new("ch.crazmoe.starface-linuxclient");
-        assert_eq!(n.main, "ch.crazmoe.starface-linuxclient.SingleInstance");
+        let n = Names::new("ch.crazmoe.starcmx");
+        assert_eq!(n.main, "ch.crazmoe.starcmx.SingleInstance");
         assert_eq!(
             n.instance(""),
-            "ch.crazmoe.starface-linuxclient.Instance.Default"
+            "ch.crazmoe.starcmx.Instance.Default"
         );
         assert_eq!(
             n.instance("2"),
-            "ch.crazmoe.starface-linuxclient.Instance.P2"
+            "ch.crazmoe.starcmx.Instance.P2"
         );
         assert_eq!(n.profile_of(&n.instance("2")).as_deref(), Some("2"));
         assert_eq!(n.profile_of(&n.instance("")).as_deref(), Some(""));
@@ -1301,30 +1301,30 @@ mod tests {
     #[test]
     fn desktop_entries() {
         let e = desktop_entry(
-            "starclx-p2",
+            "starcmx-p2",
             "2",
             Some("pbx.example.ch"),
-            "/opt/Star CLX/starclx",
+            "/opt/Star CLX/starcmx",
             "/h/icon.png",
         );
-        assert!(e.contains("Name=StarCLX – pbx.example.ch\n"));
-        assert!(e.contains("Exec=\"/opt/Star CLX/starclx\" --profile 2\n"));
-        assert!(e.contains("StartupWMClass=starclx-p2\n"));
+        assert!(e.contains("Name=StarCMX – pbx.example.ch\n"));
+        assert!(e.contains("Exec=\"/opt/Star CLX/starcmx\" --profile 2\n"));
+        assert!(e.contains("StartupWMClass=starcmx-p2\n"));
         assert!(e.contains("NoDisplay=true\n"));
-        assert!(e.contains("X-StarCLX-Host=pbx.example.ch\n"));
-        assert!(desktop_entry("starclx-p3", "3", None, "/x", "/i").contains("Name=StarCLX 3\n"));
+        assert!(e.contains("X-StarCMX-Host=pbx.example.ch\n"));
+        assert!(desktop_entry("starcmx-p3", "3", None, "/x", "/i").contains("Name=StarCMX 3\n"));
     }
 
     #[test]
     fn titles_only_with_several() {
         let label = ("pbx.example.ch".to_owned(), "Anna".to_owned());
         let one = Titles::new(Some(&label), false);
-        assert_eq!(one.main, "StarCLX");
-        assert_eq!(one.tooltip, "StarCLX: Anna");
+        assert_eq!(one.main, "StarCMX");
+        assert_eq!(one.tooltip, "StarCMX: Anna");
         let two = Titles::new(Some(&label), true);
-        assert_eq!(two.main, "StarCLX – pbx.example.ch");
-        assert_eq!(two.tooltip, "StarCLX (pbx.example.ch): Anna");
+        assert_eq!(two.main, "StarCMX – pbx.example.ch");
+        assert_eq!(two.tooltip, "StarCMX (pbx.example.ch): Anna");
         assert!(two.quick.ends_with("– pbx.example.ch"));
-        assert_eq!(Titles::new(None, true).main, "StarCLX – nicht angemeldet");
+        assert_eq!(Titles::new(None, true).main, "StarCMX – nicht angemeldet");
     }
 }

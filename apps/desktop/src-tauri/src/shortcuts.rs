@@ -1,7 +1,7 @@
 //! Globale Tastenkürzel über das XDG-Portal „GlobalShortcuts“ (KDE Plasma,
-//! Hyprland, GNOME ab 48 auch im Flatpak). StarCLX meldet seine Kürzel beim
+//! Hyprland, GNOME ab 48 auch im Flatpak). StarCMX meldet seine Kürzel beim
 //! Portal an, der Desktop fragt beim ersten Mal nach und meldet jeden
-//! Tastendruck als Signal, solange StarCLX läuft. Welche Taste am Ende gilt,
+//! Tastendruck als Signal, solange StarCMX läuft. Welche Taste am Ende gilt,
 //! entscheidet der Desktop: Unter KDE ändert man sie danach in den
 //! Systemeinstellungen.
 
@@ -113,7 +113,7 @@ pub fn apply(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {
     Ok(())
 }
 
-/// Öffnet die Einstellungen des Desktops für die Kürzel von StarCLX (KDE:
+/// Öffnet die Einstellungen des Desktops für die Kürzel von StarCMX (KDE:
 /// Systemeinstellungen › Kurzbefehle).
 #[tauri::command]
 pub fn configure_hotkeys() -> Result<(), String> {
@@ -158,7 +158,7 @@ fn sender(conn: &Connection) -> String {
 }
 
 fn token() -> String {
-    format!("starclx{}", TOKEN.fetch_add(1, Ordering::Relaxed))
+    format!("starcmx{}", TOKEN.fetch_add(1, Ordering::Relaxed))
 }
 
 /// Ruft eine Portal-Methode auf und wartet auf deren Antwort-Signal.
@@ -288,7 +288,7 @@ mod tests {
         assert_eq!(xdg_trigger("F9"), "F9");
     }
 
-    /// Nachgebautes Portal, nur die Teile, die StarCLX braucht
+    /// Nachgebautes Portal, nur die Teile, die StarCMX braucht
     struct MockPortal;
 
     #[zbus::interface(name = "org.freedesktop.portal.GlobalShortcuts")]
@@ -351,7 +351,7 @@ mod tests {
     }
 
     /// Braucht einen eigenen Session-Bus: `dbus-run-session -- cargo test -p
-    /// starclx portal_roundtrip -- --ignored`
+    /// starcmx portal_roundtrip -- --ignored`
     #[test]
     #[ignore]
     fn portal_roundtrip() {

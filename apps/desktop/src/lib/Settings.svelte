@@ -598,7 +598,7 @@
             <p class="small muted">{t("Die Kürzel gelten dann in allen Programmen und überschreiben dort gleiche Kombinationen. Andere eigene Tastenkürzel bleiben unverändert.")}</p>
           {:else if desktop.portal}
             <Toggle bind:checked={draft.hotkeys.enabled} disabled={lk("hotkeys")} label={t("Tastenkürzel beim Desktop anmelden")} />
-            <p class="small muted">{t("Beim ersten Mal fragt der Desktop nach, ob er die Kürzel übernehmen soll. Sie wirken, solange StarCLX läuft. Ändern lassen sie sich danach in den Systemeinstellungen des Desktops; die Tasten hier sind nur ein Vorschlag für neue Kürzel.")}</p>
+            <p class="small muted">{t("Beim ersten Mal fragt der Desktop nach, ob er die Kürzel übernehmen soll. Sie wirken, solange StarCMX läuft. Ändern lassen sie sich danach in den Systemeinstellungen des Desktops; die Tasten hier sind nur ein Vorschlag für neue Kürzel.")}</p>
             {#if draft.hotkeys.enabled}
               <button onclick={() => invoke("configure_hotkeys").catch((e) => (notice = String(e)))}>{t("In den Systemeinstellungen ändern …")}</button>
             {/if}
@@ -624,7 +624,7 @@
       <section id="integration">
         <h3>{t("Desktop-Integration")}</h3>
         <div class="card">
-          <Toggle bind:checked={draft.handle_tel_links} disabled={lk("handle_tel_links")} label={t("Rufnummern-Links (tel:, callto:, sip:) mit StarCLX öffnen")} />
+          <Toggle bind:checked={draft.handle_tel_links} disabled={lk("handle_tel_links")} label={t("Rufnummern-Links (tel:, callto:, sip:) mit StarCMX öffnen")} />
           <p class="small muted">{t("Ein Klick auf eine Rufnummer im Browser oder Mailprogramm wählt sie mit dem Softphone.")}</p>
         </div>
       </section>

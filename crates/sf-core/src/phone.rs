@@ -275,7 +275,7 @@ impl Phone {
             resolve(host, creds.port).await
         };
 
-        let software = format!("starclx/{app_version}");
+        let software = format!("starcmx/{app_version}");
         let (sip, mut sip_rx) = Softphone::start(&config, &software)?;
         let sip = Arc::new(sip);
         sip.add_account(&sf_sip::Account {

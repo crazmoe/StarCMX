@@ -3,7 +3,7 @@
 //!
 //! Unter Wayland darf eine App keine globalen Tastenkürzel abfangen. Unter
 //! GNOME werden die Kürzel deshalb als eigene Tastenkombinationen
-//! eingetragen; diese starten `starclx --action …`, und single-instance
+//! eingetragen; diese starten `starcmx --action …`, und single-instance
 //! reicht die Aktion an die laufende App weiter. Andere Desktops (KDE …)
 //! und das Flathub-Flatpak gehen über das GlobalShortcuts-Portal
 //! ([`crate::shortcuts`]).
@@ -118,7 +118,7 @@ fn program() -> String {
                 .ok()
                 .map(|p| p.to_string_lossy().into_owned())
         })
-        .unwrap_or_else(|| "starclx".into())
+        .unwrap_or_else(|| "starcmx".into())
 }
 
 fn command_for(action: &str) -> String {
@@ -209,7 +209,7 @@ fn read_text(primary: bool) -> Option<String> {
     text.ok().filter(|t| !t.trim().is_empty())
 }
 
-/// Rufnummern-Links, die StarCLX auf Wunsch öffnet
+/// Rufnummern-Links, die StarCMX auf Wunsch öffnet
 pub const TEL_SCHEMES: [&str; 3] = ["tel", "callto", "sip"];
 
 /// Registriert starface-app:// immer, tel:/callto:/sip: nur mit `tel`. Läuft
@@ -218,7 +218,7 @@ pub fn register_schemes(app: &AppHandle, tel: bool) {
     // Wichtig für AppImage und `tauri dev`; das .deb bringt eine eigene
     // .desktop-Datei mit. Fehlt z. B. xdg-mime, startet die App trotzdem.
     // Flatpak: die exportierte .desktop-Datei nennt die Schemata schon,
-    // hier wird StarCLX nur als Standard eingetragen. Abmelden geht dort
+    // hier wird StarCMX nur als Standard eingetragen. Abmelden geht dort
     // nicht, ein anderes Programm wählt man in den Systemeinstellungen.
     if let Some(id) = crate::flatpak::app_id() {
         if crate::flatpak::sandboxed() {
@@ -309,13 +309,13 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// `$XDG_CONFIG_HOME/autostart/starclx.desktop` (sonst ~/.config/autostart)
+/// `$XDG_CONFIG_HOME/autostart/starcmx.desktop` (sonst ~/.config/autostart)
 fn autostart_file() -> Option<PathBuf> {
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
-    Some(base.join("autostart").join("starclx.desktop"))
+    Some(base.join("autostart").join("starcmx.desktop"))
 }
 
 /// Pfad als Argument der Exec-Zeile: in Anführungszeichen, Sonderzeichen
@@ -339,7 +339,7 @@ pub(crate) fn exec_quote(path: &str) -> String {
 
 fn autostart_entry(program: &str) -> String {
     format!(
-        "[Desktop Entry]\nType=Application\nName=StarCLX\nExec={}\nIcon=starclx\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
+        "[Desktop Entry]\nType=Application\nName=StarCMX\nExec={}\nIcon=starcmx\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
         exec_quote(program)
     )
 }
@@ -428,7 +428,7 @@ fn merged_list(current: &[String], hotkeys: &Hotkeys) -> Vec<String> {
 
 /// Neuer Hauptclient nach einem Ausfall: Kürzel über das Portal hängen an
 /// der Verbindung des alten und müssen neu angemeldet werden. GNOME-Kürzel
-/// starten `starclx --action …` und landen ohnehin beim Hauptclient.
+/// starten `starcmx --action …` und landen ohnehin beim Hauptclient.
 pub fn take_over_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) {
     if hotkeys.enabled
         && backend() == Backend::Portal
@@ -461,7 +461,7 @@ fn apply_gnome(hotkeys: &Hotkeys) -> Result<(), String> {
                 "set",
                 &schema,
                 "name",
-                &quote(&format!("StarCLX: {}", t(label))),
+                &quote(&format!("StarCMX: {}", t(label))),
             ])?;
             gsettings(&["set", &schema, "command", &quote(&command_for(action))])?;
             gsettings(&["set", &schema, "binding", &quote(binding)])?;
@@ -552,8 +552,8 @@ mod tests {
 
     #[test]
     fn autostart_exec() {
-        let e = autostart_entry("/opt/Star CLX/starclx");
-        assert!(e.contains("Exec=\"/opt/Star CLX/starclx\"\n"));
+        let e = autostart_entry("/opt/Star CLX/starcmx");
+        assert!(e.contains("Exec=\"/opt/Star CLX/starcmx\"\n"));
         assert!(e.contains("X-GNOME-Autostart-enabled=true"));
         assert_eq!(exec_quote("/a$b%c"), r#""/a\\$b%%c""#);
         assert_eq!(exec_quote("/a\\b"), r#""/a\\\\b""#);

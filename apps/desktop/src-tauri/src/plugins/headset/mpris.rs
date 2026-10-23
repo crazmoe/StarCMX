@@ -1,6 +1,6 @@
 //! Bluetooth-Kopfhörer und -Headsets: Ihre Taste schickt (über AVRCP) Play
 //! bzw. Pause, die der Desktop an den Medienspieler (MPRIS) gibt. Solange
-//! ein Anruf klingelt oder läuft, meldet sich StarCLX als solcher Spieler
+//! ein Anruf klingelt oder läuft, meldet sich StarCMX als solcher Spieler
 //! an; die Taste nimmt dann an oder legt auf. Ohne Anruf bleibt die Taste
 //! beim Musikspieler. Ob die Taste dann zählt, entscheidet die Einstellung
 //! `play_pause_call` (siehe `super::media_key`).
@@ -20,12 +20,12 @@ static WORKER: OnceLock<Mutex<Sender<bool>>> = OnceLock::new();
 
 /// Name des Spielers; in Flatpak darf die App nur den zu ihrer ID besitzen
 fn bus_name() -> String {
-    let id = crate::flatpak::app_id().unwrap_or_else(|| "starclx".to_owned());
+    let id = crate::flatpak::app_id().unwrap_or_else(|| "starcmx".to_owned());
     format!("org.mpris.MediaPlayer2.{id}")
 }
 
 fn desktop_entry() -> String {
-    crate::flatpak::app_id().unwrap_or_else(|| "starclx".to_owned())
+    crate::flatpak::app_id().unwrap_or_else(|| "starcmx".to_owned())
 }
 
 /// Spieler an- (Anruf) oder abmelden (kein Anruf). Die D-Bus-Arbeit macht
@@ -99,7 +99,7 @@ impl Root {
 
     #[zbus(property)]
     fn identity(&self) -> String {
-        "StarCLX".to_owned()
+        "StarCMX".to_owned()
     }
 
     #[zbus(property)]
@@ -175,7 +175,7 @@ impl Player {
     #[zbus(property)]
     fn metadata(&self) -> HashMap<String, OwnedValue> {
         let mut m = HashMap::new();
-        let track = ObjectPath::from_static_str_unchecked("/ch/crazmoe/StarCLX/Anruf");
+        let track = ObjectPath::from_static_str_unchecked("/ch/crazmoe/StarCMX/Anruf");
         if let Ok(v) = OwnedValue::try_from(Value::from(track)) {
             m.insert("mpris:trackid".to_owned(), v);
         }
@@ -233,8 +233,8 @@ mod tests {
     #[test]
     fn names() {
         if crate::flatpak::app_id().is_none() {
-            assert_eq!(bus_name(), "org.mpris.MediaPlayer2.starclx");
-            assert_eq!(desktop_entry(), "starclx");
+            assert_eq!(bus_name(), "org.mpris.MediaPlayer2.starcmx");
+            assert_eq!(desktop_entry(), "starcmx");
         }
     }
 }

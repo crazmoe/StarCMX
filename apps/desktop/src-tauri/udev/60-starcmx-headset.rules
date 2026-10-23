@@ -1,4 +1,4 @@
-# Headsets mit USB-HID-Telefonietasten: Zugriff für angemeldete Benutzer (StarCLX)
+# Headsets mit USB-HID-Telefonietasten: Zugriff für angemeldete Benutzer (StarCMX)
 # Jabra (GN Netcom)
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b0e", TAG+="uaccess"
 # Poly (Plantronics)

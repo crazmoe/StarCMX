@@ -1114,7 +1114,7 @@ mod tests {
         let alice_client = &bob.clients_of("alice@pbx.test")[0];
         assert_eq!(alice_client.files, Some(true));
         assert!(
-            alice_client.name.starts_with("StarCLX "),
+            alice_client.name.starts_with("StarCMX "),
             "{alice_client:?}"
         );
         let dir = temp_dir("ok");

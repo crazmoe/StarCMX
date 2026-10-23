@@ -1,17 +1,17 @@
-# Contributing to StarCLX
+# Contributing to StarCMX
 
-Thanks for your interest in improving StarCLX! Issues and pull requests may be written in
+Thanks for your interest in improving StarCMX! Issues and pull requests may be written in
 English or German.
 
 ## Reporting bugs and suggesting features
 
-Please use the [issue forms](https://github.com/crazmoe/StarCLX/issues/new/choose). For bugs,
-include the StarCLX version (shown at the bottom of the Settings), the installation method, your
+Please use the [issue forms](https://github.com/crazmoe/StarCMX/issues/new/choose). For bugs,
+include the StarCMX version (shown at the bottom of the Settings), the installation method, your
 operating system and the STARFACE version. Remove passwords, tokens and other personal data
 from logs and screenshots.
 
 Rough ideas and questions are welcome in
-[Discussions](https://github.com/crazmoe/StarCLX/discussions), where others can comment and
+[Discussions](https://github.com/crazmoe/StarCMX/discussions), where others can comment and
 vote on them; a concrete feature request can then become an issue.
 
 Security problems are reported privately, see [SECURITY.md](SECURITY.md).
@@ -23,8 +23,8 @@ Requirements: Rust (stable), Node 22, and on Debian/Ubuntu
 (full list in the "Systempakete" step of [`.github/workflows/ci.yml`](workflows/ci.yml)).
 
 ```sh
-git clone --recurse-submodules https://github.com/crazmoe/StarCLX.git
-cd StarCLX
+git clone --recurse-submodules https://github.com/crazmoe/StarCMX.git
+cd StarCMX
 cargo test --workspace
 cd apps/desktop && npm install && npm run tauri dev
 ```

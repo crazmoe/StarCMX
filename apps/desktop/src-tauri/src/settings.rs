@@ -185,7 +185,7 @@ pub struct Prefs {
     pub start_minimized: bool,
     /// Beim Anmelden am Rechner starten (XDG-Autostart)
     pub autostart: bool,
-    /// tel:-, callto:- und sip:-Links mit StarCLX öffnen
+    /// tel:-, callto:- und sip:-Links mit StarCMX öffnen
     pub handle_tel_links: bool,
     /// URL oder Programm bei Anruf
     pub call_actions: Vec<crate::plugins::callactions::CallAction>,

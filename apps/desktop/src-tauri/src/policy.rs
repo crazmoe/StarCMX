@@ -1,4 +1,4 @@
-//! Systemweite Vorgaben für den Rollout: `starclxrc` in den Ordnern von
+//! Systemweite Vorgaben für den Rollout: `starcmxrc` in den Ordnern von
 //! `$XDG_CONFIG_DIRS` (ohne Angabe `/etc/xdg`), im Format der KDE-Konfigdateien.
 //!
 //! - `schluessel=wert` ist ein Startwert: gilt, bis der Benutzer die
@@ -20,7 +20,7 @@ use serde_json::{Map, Value};
 
 use crate::settings::Prefs;
 
-pub const FILE_NAME: &str = "starclxrc";
+pub const FILE_NAME: &str = "starcmxrc";
 /// Schlüssel für die Anlage (sonst Felder von `Prefs`)
 const SERVER: &str = "server";
 
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn template_is_valid() {
         // Die Beispiele sind auskommentiert (`#schluessel=wert`).
-        let template = include_str!("../../../../packaging/vorlagen/etc/xdg/starclxrc");
+        let template = include_str!("../../../../packaging/vorlagen/etc/xdg/starcmxrc");
         let active: String = template
             .lines()
             .map(|l| match l.strip_prefix('#') {

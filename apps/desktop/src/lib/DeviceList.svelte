@@ -44,7 +44,7 @@
   }
 
   // Namen von Bluetooth- und USB-Geräten, die schon einmal verbunden waren
-  const KNOWN = "starclx.bluetooth-names";
+  const KNOWN = "starcmx.bluetooth-names";
   function known(): Record<string, string> {
     try {
       return JSON.parse(localStorage.getItem(KNOWN) ?? "{}");

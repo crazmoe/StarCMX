@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "starclx",
+  "productName": "starcmx",
   "version": "1.6.3",
-  "identifier": "ch.crazmoe.starface-linuxclient",
+  "identifier": "ch.crazmoe.starcmx",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
       {
         "label": "main",
         "create": false,
-        "title": "StarCLX",
+        "title": "StarCMX",
         "width": 1000,
         "height": 700,
         "minWidth": 600,
@@ -41,15 +41,15 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
-    "shortDescription": "StarCLX – freier Client für STARFACE-Telefonanlagen",
+    "shortDescription": "StarCMX – freier Client für STARFACE-Telefonanlagen",
     "linux": {
       "deb": {
-        "desktopTemplate": "./starclx.desktop",
+        "desktopTemplate": "./starcmx.desktop",
         "conflicts": [
-          "starface-linuxclient"
+          "starcmx"
         ],
         "replaces": [
-          "starface-linuxclient"
+          "starcmx"
         ],
         "depends": [
           "libpipewire-0.3-0t64 | libpipewire-0.3-0",
@@ -65,21 +65,21 @@
           "ffmpeg"
         ],
         "files": {
-          "/usr/lib/udev/rules.d/60-starclx-busylight.rules": "udev/60-starclx-busylight.rules",
-          "/usr/lib/udev/rules.d/60-starclx-headset.rules": "udev/60-starclx-headset.rules",
-          "/usr/share/doc/starclx/vorlagen/starclxrc": "../../../packaging/vorlagen/etc/xdg/starclxrc",
-          "/usr/share/doc/starclx/vorlagen/autostart/starclx.desktop": "../../../packaging/vorlagen/etc/xdg/autostart/starclx.desktop",
-          "/usr/share/doc/starclx/vorlagen/mimeapps.list": "../../../packaging/vorlagen/etc/xdg/mimeapps.list"
+          "/usr/lib/udev/rules.d/60-starcmx-busylight.rules": "udev/60-starcmx-busylight.rules",
+          "/usr/lib/udev/rules.d/60-starcmx-headset.rules": "udev/60-starcmx-headset.rules",
+          "/usr/share/doc/starcmx/vorlagen/starcmxrc": "../../../packaging/vorlagen/etc/xdg/starcmxrc",
+          "/usr/share/doc/starcmx/vorlagen/autostart/starcmx.desktop": "../../../packaging/vorlagen/etc/xdg/autostart/starcmx.desktop",
+          "/usr/share/doc/starcmx/vorlagen/mimeapps.list": "../../../packaging/vorlagen/etc/xdg/mimeapps.list"
         }
       },
       "appimage": {},
       "rpm": {
-        "desktopTemplate": "./starclx.desktop",
+        "desktopTemplate": "./starcmx.desktop",
         "conflicts": [
-          "starface-linuxclient"
+          "starcmx"
         ],
         "obsoletes": [
-          "starface-linuxclient"
+          "starcmx"
         ],
         "depends": [
           "libwebkit2gtk-4.1.so.0()(64bit)",
@@ -98,11 +98,11 @@
           "ffmpeg"
         ],
         "files": {
-          "/usr/lib/udev/rules.d/60-starclx-busylight.rules": "udev/60-starclx-busylight.rules",
-          "/usr/lib/udev/rules.d/60-starclx-headset.rules": "udev/60-starclx-headset.rules",
-          "/usr/share/doc/starclx/vorlagen/starclxrc": "../../../packaging/vorlagen/etc/xdg/starclxrc",
-          "/usr/share/doc/starclx/vorlagen/autostart/starclx.desktop": "../../../packaging/vorlagen/etc/xdg/autostart/starclx.desktop",
-          "/usr/share/doc/starclx/vorlagen/mimeapps.list": "../../../packaging/vorlagen/etc/xdg/mimeapps.list"
+          "/usr/lib/udev/rules.d/60-starcmx-busylight.rules": "udev/60-starcmx-busylight.rules",
+          "/usr/lib/udev/rules.d/60-starcmx-headset.rules": "udev/60-starcmx-headset.rules",
+          "/usr/share/doc/starcmx/vorlagen/starcmxrc": "../../../packaging/vorlagen/etc/xdg/starcmxrc",
+          "/usr/share/doc/starcmx/vorlagen/autostart/starcmx.desktop": "../../../packaging/vorlagen/etc/xdg/autostart/starcmx.desktop",
+          "/usr/share/doc/starcmx/vorlagen/mimeapps.list": "../../../packaging/vorlagen/etc/xdg/mimeapps.list"
         }
       }
     }

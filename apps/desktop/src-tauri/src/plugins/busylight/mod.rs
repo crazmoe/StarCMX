@@ -1,5 +1,5 @@
 //! Plugin Kuando Busylight: grün wenn frei, rot im Gespräch, blinkend (mit
-//! Ton) bei eingehendem Anruf, aus wenn abgemeldet. Laufen mehrere StarCLX,
+//! Ton) bei eingehendem Anruf, aus wenn abgemeldet. Laufen mehrere StarCMX,
 //! zeigt der Hauptclient den Zustand aller.
 
 use std::sync::Mutex;

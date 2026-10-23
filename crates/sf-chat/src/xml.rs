@@ -54,13 +54,13 @@ pub fn disco_items() -> Element {
     Element::builder("query", NS_DISCO_ITEMS).build()
 }
 
-/// Antwort auf `disco#info` an uns: StarCLX mit diesen Features
+/// Antwort auf `disco#info` an uns: StarCMX mit diesen Features
 pub fn own_disco_info(features: &[&str]) -> Element {
     let mut b = Element::builder("query", NS_DISCO_INFO).append(
         Element::builder("identity", NS_DISCO_INFO)
             .attr(n("category"), "client")
             .attr(n("type"), "pc")
-            .attr(n("name"), "StarCLX")
+            .attr(n("name"), "StarCMX")
             .build(),
     );
     for f in features {
@@ -85,7 +85,7 @@ pub fn own_version(version: &str) -> Element {
     Element::builder("query", NS_VERSION)
         .append(
             Element::builder("name", NS_VERSION)
-                .append("StarCLX")
+                .append("StarCMX")
                 .build(),
         )
         .append(

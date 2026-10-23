@@ -1,12 +1,12 @@
 [package]
-name = "starclx"
+name = "starcmx"
 description = "Desktop-App (Tauri 2)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
-name = "starclx_lib"
+name = "starcmx_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

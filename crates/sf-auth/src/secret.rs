@@ -8,7 +8,7 @@ use keyring_core::Entry;
 
 use crate::Result;
 
-const SERVICE: &str = "starface-linuxclient";
+const SERVICE: &str = "starcmx";
 
 /// Richtet den Schlüsselbund des Systems ein. Einmal beim Start aufrufen.
 #[cfg(target_os = "linux")]

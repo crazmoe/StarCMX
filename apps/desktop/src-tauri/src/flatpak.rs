@@ -47,9 +47,9 @@ pub fn host_command(program: &str) -> Command {
 pub fn request_autostart(on: bool) -> Result<(), String> {
     let conn = zbus::blocking::Connection::session().map_err(|e| e.to_string())?;
     let options: HashMap<&str, Value> = HashMap::from([
-        ("reason", Value::from(t("StarCLX beim Anmelden starten"))),
+        ("reason", Value::from(t("StarCMX beim Anmelden starten"))),
         ("autostart", Value::from(on)),
-        ("commandline", Value::from(vec!["starclx"])),
+        ("commandline", Value::from(vec!["starcmx"])),
         ("dbus-activatable", Value::from(false)),
     ]);
     // Die Antwort kommt später als Signal; ob der Benutzer zustimmt,

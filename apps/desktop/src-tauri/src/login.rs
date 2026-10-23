@@ -22,7 +22,7 @@ pub fn open(app: &AppHandle, url: &url::Url) -> tauri::Result<()> {
         WebviewUrl::External("about:blank".parse().unwrap()),
     );
     let window = crate::instances::webview(app, builder)
-        .title(crate::i18n::t("StarCLX – Anmelden"))
+        .title(crate::i18n::t("StarCMX – Anmelden"))
         .inner_size(480.0, 680.0)
         .on_navigation(move |url| {
             if !url.as_str().starts_with(sf_auth::REDIRECT_URI) {

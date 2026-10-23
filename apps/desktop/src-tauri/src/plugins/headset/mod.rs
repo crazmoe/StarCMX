@@ -4,7 +4,7 @@
 //! Bluetooth-Kopfhörern und -Headsets kommt über den Medienspieler (`mpris`).
 //! Ist ein Headset mit Telefonietasten da, zählt Play/Pause standardmässig
 //! nicht: Manche Headsets senden beides für denselben Druck.
-//! Laufen mehrere StarCLX, bedient der Hauptclient die Headsets für alle.
+//! Laufen mehrere StarCMX, bedient der Hauptclient die Headsets für alle.
 
 mod mpris;
 
@@ -167,7 +167,7 @@ async fn pressed(app: &AppHandle, button: Button) {
 }
 
 /// Play/Pause bzw. Stop vom Medienspieler. Während eines Anrufs bleibt
-/// StarCLX trotzdem der Spieler, damit die Taste keine Musik startet.
+/// StarCMX trotzdem der Spieler, damit die Taste keine Musik startet.
 async fn media_key(app: &AppHandle, button: Button) {
     let hid = app
         .state::<HeadsetState>()

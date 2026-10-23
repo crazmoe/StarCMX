@@ -47,7 +47,7 @@ pub struct Redirect {
     pub last_number: String,
     pub read_only: bool,
     /// Ob die Anlage die Umleitung über OneHub anbietet. Verborgene (ohne
-    /// Umleitungs-Funktionstaste) ändert StarCLX wie die Web-Oberfläche über
+    /// Umleitungs-Funktionstaste) ändert StarCMX wie die Web-Oberfläche über
     /// die REST-API.
     pub visible: bool,
 }

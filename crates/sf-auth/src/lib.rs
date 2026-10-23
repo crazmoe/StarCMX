@@ -190,7 +190,7 @@ pub struct Client {
 impl Client {
     pub async fn discover(server: &str) -> Result<Self> {
         let http = reqwest::Client::builder()
-            .user_agent(concat!("starclx/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("starcmx/", env!("CARGO_PKG_VERSION")))
             .tls_backend_preconfigured(sf_tls::client_config())
             // Auch eine Weiterleitung darf nicht auf HTTP zurückfallen.
             .redirect(reqwest::redirect::Policy::custom(|attempt| {

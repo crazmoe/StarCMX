@@ -146,7 +146,7 @@ function readableOn(accent: string) {
 
 export const prefs = $state({ value: null as Prefs | null });
 
-/** Vom System gesperrte Einstellungen (/etc/xdg/starclxrc, siehe policy.rs) */
+/** Vom System gesperrte Einstellungen (/etc/xdg/starcmxrc, siehe policy.rs) */
 export const locked = $state({ keys: [] as string[] });
 
 export async function loadPrefs() {
