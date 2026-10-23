@@ -12,6 +12,9 @@
 #include <string.h>
 #include <re.h>
 #include <baresip.h>
+/* re_dbg.h verlangt beides; MSVC kennt #warning nicht */
+#define DEBUG_MODULE "sfsip"
+#define DEBUG_LEVEL 7
 #include <re_dbg.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
