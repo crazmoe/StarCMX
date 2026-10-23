@@ -248,14 +248,23 @@ fn patch_baresip(src: &Path) {
     for (file, old, new) in BARESIP_PATCHES {
         let path = src.join(file);
         let text = std::fs::read_to_string(&path).unwrap();
-        if text.contains(new) {
+        // Git unter Windows checkt je nach core.autocrlf mit CRLF aus
+        let eol = |s: &str| {
+            if text.contains("\r\n") {
+                s.replace('\n', "\r\n")
+            } else {
+                s.to_owned()
+            }
+        };
+        let (old, new) = (eol(old), eol(new));
+        if text.contains(&new) {
             continue;
         }
         assert!(
-            text.contains(old),
+            text.contains(&old),
             "{file}: Patch passt nicht mehr zur baresip-Version"
         );
-        std::fs::write(&path, text.replacen(old, new, 1)).unwrap();
+        std::fs::write(&path, text.replacen(&old, &new, 1)).unwrap();
     }
 }
 
