@@ -1,0 +1,426 @@
+<script lang="ts">
+  import { connection } from "../../connection.svelte";
+  import { portal } from "../../portal";
+  // Funktionstasten-Editor wie im Windows-Client: links das Raster, rechts
+  // die Tastentypen. Änderungen gehen sofort an die Anlage.
+  import { invoke } from "@tauri-apps/api/core";
+  import { onMount } from "svelte";
+  import FkeyTile from "./FkeyTile.svelte";
+  import Icon from "../../Icon.svelte";
+  import { types, blank, fkeys, groupNames, moduleNames, forwardTypesExhausted, setAsksTarget, usedForwardTypes, keyAt, loadFkeys, placeAt, saveOrder, typeInfo, type FunctionKey, type SignalingNumber } from "./fkeys.svelte";
+  import { t } from "../../i18n.svelte";
+
+  let { columns = $bindable(3) }: { columns: number } = $props();
+
+  let editing = $state<FunctionKey | null>(null);
+  let busy = $state(false);
+  let error = $state("");
+  // Ziehen mit Zeigerereignissen: HTML5-Drag&Drop kommt im Tauri-Fenster
+  // unter Linux nicht an (das Fenster fängt Drops für Dateien ab).
+  type Drag = { kind: "type"; type: string; label: string } | { kind: "key"; id: string; label: string };
+  let pending: { drag: Drag; x: number; y: number } | null = null;
+  let dragging = $state<Drag | null>(null);
+  let ghost = $state({ x: 0, y: 0 });
+  /** Nach einem Ziehen den folgenden Klick verschlucken */
+  let swallowClick = false;
+  /** Platz, auf den eine neue Taste nach dem Anlegen kommt */
+  let target: number | null = null;
+  let over = $state<number | null>(null);
+  let signaling = $state<SignalingNumber[]>([]);
+  /** „Umleitung (Art)“: beim Einschalten nach dem Ziel fragen (nur lokal) */
+  let ask = $state(false);
+  $effect(() => { ask = !!editing?.id && fkeys.askKeys.includes(editing.id); });
+
+  onMount(() => {
+    loadFkeys();
+    invoke<SignalingNumber[]>("signaling_numbers").then((s) => (signaling = s), () => {});
+  });
+
+  const slots = $derived(Math.max(24, Math.ceil((fkeys.order.length + 1) / columns) * columns));
+  const groups = $derived([
+    { id: "fav", label: t("Favoriten") },
+    { id: "fn", label: t("Funktionstasten") },
+    { id: "desk", label: t("Nur auf Tischtelefonen verfügbar") },
+  ] as const);
+  const numbers = $derived(
+    [...new Map(fkeys.redirects.filter((r) => r.called_number_id).map((r) => [r.called_number_id, r.called_number])).entries()],
+  );
+
+  async function act(cmd: string, args: Record<string, unknown>) {
+    busy = true;
+    error = "";
+    try {
+      await invoke(cmd, args);
+      await loadFkeys();
+      return true;
+    } catch (e) {
+      error = String(e);
+      return false;
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** Name wie in Windows, wenn keiner eingegeben ist */
+  function defaultName(k: FunctionKey) {
+    const label = typeInfo(k.functionKeyType).label;
+    switch (k.functionKeyType) {
+      case "BUSYLAMPFIELD": return fkeys.accounts.find((a) => a.account_id === k.blfAccountId)?.name ?? label;
+      case "QUICKDIAL": return k.directCallTargetnumber ?? label;
+      case "FORWARD": return t("Umleitung [{art}]", { art: { ALWAYS: t("Immer"), BUSY: t("Besetzt"), TIMEOUT: t("Zeitüberschreitung") }[k.forwardType ?? "ALWAYS"] ?? "" });
+      case "PARKANDORBIT": return `P+O[${k.poNumber ?? ""}]`;
+      // Wie die Anlage: Gruppe[Name]; bei mehreren Gruppen der Typname
+      case "GROUPLOGIN": {
+        const names = groupNames(k);
+        return names.length === 1 ? t("Gruppe[{name}]", { name: names[0] }) : label;
+      }
+      case "MODULEACTIVATION": {
+        const names = moduleNames(k);
+        return names.length === 1 ? t("Modul[{name}]", { name: names[0] }) : label;
+      }
+      case "PHONEDTMF": return t("Tastentöne[{dtmf}]", { dtmf: k.dtmf ?? "" });
+      case "SEPARATOR": return "";
+      default: return label;
+    }
+  }
+
+  function validate(k: FunctionKey) {
+    switch (k.functionKeyType) {
+      case "BUSYLAMPFIELD": return k.blfAccountId ? "" : t("Bitte einen Benutzer wählen.");
+      case "QUICKDIAL": return k.directCallTargetnumber?.trim() ? "" : t("Bitte eine Rufnummer eingeben.");
+      case "FORWARDNUMBER":
+      case "FORWARDTOTARGET":
+        if (!k.redirectNumberIds.length) return t("Bitte mindestens eine Rufnummer wählen.");
+        return k.functionKeyType === "FORWARDTOTARGET" && k.forwardTargetType === "PHONENUMBER" && !k.forwardTarget?.trim() ? t("Bitte ein Ziel eingeben.") : "";
+      // Bestehende Doppel nur beim Ändern der Art bemängeln
+      case "FORWARD": return fkeys.keys.find((x) => x.id === k.id)?.forwardType !== k.forwardType && usedForwardTypes(k.id).includes(k.forwardType ?? "ALWAYS") ? t("Für diese Art gibt es schon eine Umleitungstaste.") : "";
+      case "GROUPLOGIN": return k.groupIds.length ? "" : t("Bitte mindestens eine Gruppe wählen.");
+      case "MODULEACTIVATION": return k.activateModuleIds.length ? "" : t("Bitte mindestens ein Modul wählen.");
+      case "SIGNALNUMBER": return k.displayNumberId === null ? t("Bitte eine Rufnummer wählen.") : "";
+      case "PHONEDTMF": return k.dtmf?.trim() ? "" : t("Bitte Tastentöne eingeben.");
+      case "PHONEGENERICURL": return k.genericURL?.trim() ? "" : t("Bitte eine URL eingeben.");
+      default: return "";
+    }
+  }
+
+  async function save() {
+    if (!editing) return;
+    const k = $state.snapshot(editing) as FunctionKey;
+    const wantAsk = ask;
+    error = validate(k);
+    if (error) return;
+    if (k.functionKeyType === "FORWARDTOTARGET" && k.forwardTargetType === "VOICEMAIL") k.forwardTarget = `destination:${fkeys.accountId}`;
+    if (!k.name.trim()) k.name = defaultName(k);
+    // Die Bearbeitungsform der Anlage erwartet beim BLF die Rufnummer
+    if (k.functionKeyType === "BUSYLAMPFIELD") {
+      k.directCallTargetnumber = fkeys.accounts.find((a) => a.account_id === k.blfAccountId)?.number ?? null;
+    }
+    const before = new Set(fkeys.keys.map((x) => x.id));
+    const slot = k.id ? null : target;
+    if (!(await act("fkey_save", { set: fkeys.setId, key: k }))) return;
+    editing = null;
+    target = null;
+    // Neue Taste auf den Platz legen, auf den sie gezogen wurde
+    const added = fkeys.keys.find((x) => !before.has(x.id));
+    const id = k.id || added?.id;
+    if (id && k.functionKeyType === "FORWARD" && wantAsk !== fkeys.askKeys.includes(id)) {
+      await setAsksTarget(id, wantAsk).catch((e) => (error = String(e)));
+    }
+    if (added && slot !== null) await reorder(placeAt(fkeys.order, added.id, slot));
+  }
+
+  async function reorder(order: string[]) {
+    busy = true;
+    error = "";
+    try {
+      await saveOrder(order);
+    } catch (e) {
+      error = String(e);
+    }
+    await loadFkeys();
+    busy = false;
+  }
+
+  async function remove(k: FunctionKey) {
+    if (await act("fkey_delete", { set: fkeys.setId, id: k.id })) editing = null;
+  }
+
+  function startDrag(e: PointerEvent, drag: Drag) {
+    if (e.button !== 0 || busy) return;
+    pending = { drag, x: e.clientX, y: e.clientY };
+  }
+
+  function slotAt(x: number, y: number) {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-slot]");
+    return el ? Number(el.dataset.slot) : null;
+  }
+
+  function onMove(e: PointerEvent) {
+    if (!pending) return;
+    if (!dragging) {
+      if (Math.hypot(e.clientX - pending.x, e.clientY - pending.y) < 6) return;
+      dragging = pending.drag;
+    }
+    e.preventDefault();
+    ghost = { x: e.clientX, y: e.clientY };
+    over = slotAt(e.clientX, e.clientY);
+  }
+
+  function onUp(e: PointerEvent) {
+    const d = dragging;
+    pending = null;
+    dragging = null;
+    over = null;
+    if (!d) return;
+    swallowClick = true;
+    setTimeout(() => (swallowClick = false), 0);
+    const slot = slotAt(e.clientX, e.clientY);
+    if (slot === null) return;
+    if (d.kind === "type") {
+      if (d.type === "FORWARD" && forwardTypesExhausted()) return void (error = t("Für jede Art gibt es schon eine Umleitungstaste."));
+      target = slot;
+      editing = blank(d.type);
+    } else if (fkeys.order[slot] !== d.id) {
+      reorder(placeAt(fkeys.order, d.id, slot));
+    }
+  }
+
+  function cancelDrag() {
+    pending = null;
+    dragging = null;
+    over = null;
+  }
+
+  /** Klick nur, wenn nicht gerade gezogen wurde */
+  const click = (f: () => void) => () => {
+    if (!swallowClick) f();
+  };
+
+  const toggleNumber = (id: number) => {
+    if (!editing) return;
+    const ids = editing.redirectNumberIds;
+    editing.redirectNumberIds = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+  };
+
+  const toggleGroup = (id: number) => {
+    if (!editing) return;
+    const ids = editing.groupIds;
+    editing.groupIds = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+  };
+
+  const toggleModule = (id: string) => {
+    if (!editing) return;
+    const ids = editing.activateModuleIds;
+    editing.activateModuleIds = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+  };
+</script>
+
+<svelte:window onpointermove={onMove} onpointerup={onUp} onpointercancel={cancelDrag} onblur={cancelDrag} />
+
+{#if dragging}
+  <div class="ghost" style="left: {ghost.x}px; top: {ghost.y}px">{dragging.label}</div>
+{/if}
+
+<div class="editor" class:dragging={!!dragging}>
+  <div class="left">
+    <label class="cols">{t("Anzahl der Spalten")}
+      <select bind:value={columns}>{#each [1, 2, 3, 4, 5, 6] as n}<option value={n}>{n}</option>{/each}</select>
+    </label>
+    <div class="grid" style="grid-template-columns: repeat({columns}, minmax(0, 1fr))">
+      {#each Array(slots) as _, i}
+        {@const k = keyAt(i)}
+        <div
+          class="slot"
+          class:over={over === i}
+          role="listitem"
+          data-slot={i}
+        >
+          <span class="num">{String(i + 1).padStart(2, "0")}</span>
+          {#if k}
+            <div
+              class="keywrap"
+              class:lifted={dragging?.kind === "key" && dragging.id === k.id}
+              role="button"
+              tabindex="-1"
+              onpointerdown={(e) => startDrag(e, { kind: "key", id: k.id, label: k.name || typeInfo(k.functionKeyType).label })}
+            >
+              <FkeyTile key={k} editor onclick={click(() => (editing = structuredClone($state.snapshot(k)) as FunctionKey))} />
+            </div>
+          {:else}
+            <div class="empty"></div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+    <p class="small muted">{t("Typ von rechts auf einen Platz ziehen oder anklicken. Tasten lassen sich im Raster verschieben: auf einen leeren Platz legen oder auf eine Taste ziehen, um sie davor einzuschieben. Ein Klick öffnet sie zum Bearbeiten.")}</p>
+  </div>
+
+  <div class="types">
+    <h4>{t("Funktionstastentypen")}</h4>
+    {#each groups as g}
+      <h5>{g.label}</h5>
+      {#each types().filter((x) => x.group === g.id) as ty}
+        <button
+          class="type"
+          class:unusable={!ty.usable}
+          disabled={ty.type === "FORWARD" && forwardTypesExhausted()}
+          title={ty.type === "FORWARD" && forwardTypesExhausted() ? t("Für jede Art gibt es schon eine Umleitungstaste.") : undefined}
+          onpointerdown={(e) => startDrag(e, { kind: "type", type: ty.type, label: ty.label })}
+          onclick={click(() => { target = null; editing = blank(ty.type); })}
+        >{ty.label}</button>
+      {/each}
+    {/each}
+  </div>
+</div>
+{#if fkeys.error && connection.online}<p class="notice">{fkeys.error}</p>{/if}
+{#if error && !editing && connection.online}<p class="notice">{error}</p>{/if}
+
+{#if editing}
+  {@const k = editing}
+  <div class="layer" use:portal>
+  <div class="scrim" role="presentation" onclick={() => (editing = null)}></div>
+  <div class="dialog" role="dialog" aria-label={t("Funktionstaste bearbeiten")}>
+    <h4>{k.id ? typeInfo(k.functionKeyType).label : t("{typ} hinzufügen", { typ: typeInfo(k.functionKeyType).label })}</h4>
+    {#if !typeInfo(k.functionKeyType).usable}
+      <p class="small muted">{t("Diese Taste wirkt auf Tischtelefonen; in StarCMX wird sie nur angezeigt.")}</p>
+    {/if}
+    {#if k.functionKeyType !== "SEPARATOR"}
+      <label class="row"><span>{t("Bezeichnung")}</span><input type="text" bind:value={k.name} placeholder={defaultName(k)} /></label>
+    {/if}
+    {#if k.functionKeyType === "BUSYLAMPFIELD"}
+      <label class="row"><span>{t("Benutzer")}</span>
+        <select bind:value={k.blfAccountId}>
+          <option value={null}>{t("Bitte wählen …")}</option>
+          {#each fkeys.accounts as a}<option value={a.account_id}>{a.name} ({a.number})</option>{/each}
+        </select>
+      </label>
+    {:else if k.functionKeyType === "QUICKDIAL"}
+      <label class="row"><span>{t("Rufnummer")}</span><input type="text" bind:value={k.directCallTargetnumber} /></label>
+    {:else if k.functionKeyType === "FORWARD"}
+      <label class="row"><span>{t("Art")}</span>
+        <select bind:value={k.forwardType}>
+          {#each [["ALWAYS", t("Immer")], ["BUSY", t("Besetzt")], ["TIMEOUT", t("Zeitüberschreitung")]] as [v, label]}
+            <!-- Jede Art nur einmal: die Anlage lehnt eine zweite Taste ab -->
+            <option value={v} disabled={usedForwardTypes(k.id).includes(v)}>{label}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" bind:checked={ask} /> {t("Beim Einschalten nach der Zielrufnummer fragen")}</label>
+      {#if ask}
+        <p class="small muted">{t("Beim Ausschalten gelten wieder die vorherigen Einstellungen der Umleitung.")}</p>
+      {/if}
+    {:else if k.functionKeyType === "FORWARDNUMBER" || k.functionKeyType === "FORWARDTOTARGET"}
+      <div class="row"><span>{t("Rufnummern")}</span>
+        <span class="checks">
+          {#each numbers as [id, n]}
+            <label><input type="checkbox" checked={k.redirectNumberIds.includes(Number(id))} onchange={() => toggleNumber(Number(id))} /> {n}</label>
+          {:else}<span class="muted small">{t("Keine Rufnummern gefunden.")}</span>{/each}
+        </span>
+      </div>
+      {#if k.functionKeyType === "FORWARDTOTARGET"}
+        <label class="row"><span>{t("Ziel")}</span>
+          <select bind:value={k.forwardTargetType}>
+            <option value="VOICEMAIL">Voicemail</option><option value="PHONENUMBER">{t("Rufnummer")}</option>
+          </select>
+        </label>
+        {#if k.forwardTargetType === "PHONENUMBER"}
+          <label class="row"><span>{t("Zielrufnummer")}</span><input type="text" bind:value={k.forwardTarget} /></label>
+        {/if}
+      {/if}
+    {:else if k.functionKeyType === "SIGNALNUMBER"}
+      <label class="row"><span>{t("Rufnummer")}</span>
+        <select bind:value={k.displayNumberId}>
+          <option value={null}>{t("Bitte wählen …")}</option>
+          {#each signaling as s}<option value={s.suppressed ? 0 : Number(s.id)}>{s.suppressed ? t("Nummer unterdrücken") : s.number}</option>{/each}
+        </select>
+      </label>
+    {:else if k.functionKeyType === "PARKANDORBIT"}
+      <label class="row"><span>{t("Parkplatz")}</span><input type="text" bind:value={k.poNumber} /></label>
+    {:else if k.functionKeyType === "PHONEDTMF"}
+      <label class="row"><span>{t("Tastentöne")}</span><input type="text" bind:value={k.dtmf} placeholder={t("z. B. {beispiel}", { beispiel: "12345" })} /></label>
+    {:else if k.functionKeyType === "PHONEGENERICURL"}
+      <label class="row"><span>URL</span><input type="text" bind:value={k.genericURL} placeholder="https://…" /></label>
+    {:else if k.functionKeyType === "ADDRESSBOOK"}
+      <label class="row"><span>{t("Anzeige")}</span>
+        <select bind:value={k.addressbookRequest}><option value="CONTACTLIST">{t("Kontaktliste")}</option><option value="CONTACTSEARCH">{t("Kontaktsuche")}</option></select>
+      </label>
+      <label class="row"><span>{t("Adressbuch")}</span><input type="text" bind:value={k.addressBookFolderName} /></label>
+    {:else if k.functionKeyType === "PHONECALLLIST"}
+      <label class="row"><span>{t("Liste")}</span>
+        <select bind:value={k.callListRequest}><option value="INCOMING">{t("Eingehend")}</option><option value="OUTGOING">{t("Ausgehend")}</option><option value="MISSED">{t("Verpasst")}</option></select>
+      </label>
+    {:else if k.functionKeyType === "GROUPLOGIN"}
+      <div class="row"><span>{t("Gruppen")}</span>
+        <span class="checks">
+          {#each fkeys.groupChoices as g}
+            <label><input type="checkbox" checked={k.groupIds.includes(g.id)} onchange={() => toggleGroup(g.id)} /> {g.name}</label>
+          {:else}<span class="muted small">{t("Keine Gruppen gefunden.")}</span>{/each}
+        </span>
+      </div>
+      <p class="small muted">{t("Ein Druck auf die Taste meldet bei den gewählten Gruppen an oder ab.")}</p>
+    {:else if k.functionKeyType === "MODULEACTIVATION"}
+      <div class="row"><span>{t("Module")}</span>
+        <span class="checks">
+          {#each fkeys.moduleChoices as m}
+            <label><input type="checkbox" checked={k.activateModuleIds.includes(m.id)} onchange={() => toggleModule(m.id)} /> {m.name}</label>
+          {:else}<span class="muted small">{t("Keine Module gefunden.")}</span>{/each}
+        </span>
+      </div>
+      <p class="small muted">{t("Ein Druck auf die Taste schaltet die gewählten Module ein oder aus.")}</p>
+    {/if}
+    {#if error}<p class="notice">{error}</p>{/if}
+    <div class="actions">
+      {#if k.id}<button class="danger" disabled={busy} onclick={() => editing && remove(editing)}><Icon name="trash" size={18} /> {t("Entfernen")}</button>{/if}
+      <span class="spacer"></span>
+      <button onclick={() => (editing = null)}>{t("Abbrechen")}</button>
+      <button class="primary" disabled={busy} onclick={save}>{k.id ? t("Speichern") : t("Hinzufügen")}</button>
+    </div>
+  </div>
+  </div>
+{/if}
+
+<style>
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr) 14rem; gap: 1rem; }
+  .left { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+  .cols { display: flex; align-items: center; gap: 0.6rem; }
+  select, input[type="text"] { padding: 0.3rem 0.5rem; background: var(--panel-2); color: inherit; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+  .grid { display: grid; gap: 0.4rem; }
+  .slot { display: grid; grid-template-columns: 1.6rem 1fr; align-items: center; gap: 0.3rem; border-radius: 6px; }
+  .slot.over { outline: 2px solid var(--accent); }
+  .dragging, .dragging * { cursor: grabbing !important; user-select: none; }
+  .keywrap { touch-action: none; }
+  .keywrap.lifted { opacity: 0.35; }
+  .ghost {
+    position: fixed; z-index: 40; pointer-events: none; transform: translate(-50%, -50%);
+    max-width: 14rem; padding: 0.35rem 0.7rem; border-radius: 6px; background: var(--panel-2);
+    border: 1px solid var(--accent); box-shadow: 0 4px 14px #0006; font-size: 0.9rem; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .num { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; text-align: right; }
+  .empty { min-height: 3.2rem; border: 1px dashed var(--line); border-radius: 6px; }
+  .keywrap { min-width: 0; }
+  .types { display: flex; flex-direction: column; gap: 0.25rem; }
+  .types h4 { margin: 0 0 0.2rem; }
+  .types h5 { margin: 0.6rem 0 0.1rem; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .type { text-align: left; padding: 0.35rem 0.6rem; cursor: grab; touch-action: none; }
+  .type.unusable { opacity: 0.55; }
+  .type:disabled { opacity: 0.4; cursor: not-allowed; }
+  .small { font-size: 0.85rem; }
+  .muted { color: var(--muted); margin: 0.2rem 0; }
+  .notice { color: var(--accent-text); margin: 0.3rem 0; }
+  .scrim { position: fixed; inset: 0; background: #0007; z-index: 30; }
+  .dialog {
+    position: fixed; z-index: 31; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(30rem, 92vw);
+    max-height: 92vh; overflow-y: auto; box-sizing: border-box;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem;
+  }
+  .dialog h4 { margin: 0 0 0.2rem; }
+  .row { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: 0.6rem; }
+  .check { display: flex; align-items: center; gap: 0.4rem; }
+  .checks { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .actions { display: flex; gap: 0.6rem; margin-top: 0.4rem; }
+  .spacer { flex: 1; }
+  .primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .danger { display: flex; align-items: center; gap: 0.3rem; color: var(--red); }
+  @media (max-width: 800px) { .editor { grid-template-columns: 1fr; } }
+</style>

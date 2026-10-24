@@ -1,0 +1,32 @@
+[package]
+name = "sf-auth"
+description = "OAuth2-Anmeldung an der STARFACE (Authorization Code + PKCE, Refresh)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sf-backoff.workspace = true
+reqwest.workspace = true
+sf-tls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+url.workspace = true
+base64 = "0.23"
+getrandom = "0.4"
+sha2 = "0.11"
+keyring-core = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Nicht die tokio-Variante: Sie schaltet bei zbus das Feature „tokio“ ein,
+# und dann stürzen blockierende D-Bus-Aufrufe aus async-Code ab (z. B. jede
+# Desktop-Benachrichtigung über tauri-plugin-notification).
+zbus-secret-service-keyring-store = { version = "1", features = ["rt-async-io-crypto-rust"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-native-keyring-store = "1"
+
+[dev-dependencies]
+serde_json.workspace = true
+tokio = { workspace = true, features = ["rt"] }

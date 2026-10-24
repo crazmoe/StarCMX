@@ -1,0 +1,337 @@
+<script lang="ts">
+  import { connection } from "./connection.svelte";
+  // Menü am Profilbild, aufgebaut wie in der STARFACE-App: Bild und Name,
+  // darunter Ruhe, Chat-Status, primäres Telefon, signalisierte Rufnummer
+  // und die eigenen Umleitungen (Immer); Untermenüs öffnen sich daneben.
+  import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
+  import { onMount } from "svelte";
+  import ChatBubble from "./ChatBubble.svelte";
+  import Icon from "./Icon.svelte";
+  import OwnStatus from "./OwnStatus.svelte";
+  import { avatarOf, fkeys, loadFkeys, loadSignaling, ownChat, type Redirect, type SignalingNumber } from "./plugins/fkeys/fkeys.svelte";
+  import { phone } from "./plugins/call/phone.svelte";
+  import { prefs } from "./prefs.svelte";
+  import { t } from "./i18n.svelte";
+
+  type Session = { server: string; server_version: string; display_name: string; user_id: string };
+  type PhoneView = { id: string; name: string; primary: boolean };
+  type Account = { server: string; user_id: string; display_name: string; active: boolean };
+
+  let { session, onsettings, onlogout, onswitch, onadd }: {
+    session: Session;
+    onsettings: () => void;
+    onlogout: () => void;
+    onswitch: (a: Account) => void;
+    onadd: () => void;
+  } = $props();
+
+  let sub = $state<"" | "chat" | "phone" | "number" | "redirect" | "account">("");
+  let accounts = $state<Account[]>([]);
+  const others = $derived(accounts.filter((a) => !a.active));
+  const host = (server: string) => server.replace(/^https?:\/\//, "");
+  let phones = $state<PhoneView[]>([]);
+  let numbers = $state<SignalingNumber[]>([]);
+  let redirects = $state<Redirect[]>([]);
+  let notice = $state("");
+  let license = $state<string | null>(null);
+
+  const avatar = $derived(session.user_id ? avatarOf(session.user_id) : null);
+  const initials = $derived(session.display_name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?");
+  const dnd = $derived(fkeys.presence[session.user_id]?.dnd ?? false);
+  // Eigener Status von der Anlage, auch wenn ihn ein anderer Client gesetzt hat
+  const own = $derived(ownChat(session.user_id));
+  const chat = $derived(own.availability);
+  const chatLabel = $derived(own.text || ({ available: t("Verfügbar"), away: t("Abwesend"), dnd: t("Bitte nicht stören") } as Record<string, string>)[chat]);
+  // Lizenztyp aus der REST-API; unbekannte Werte so, wie die Anlage sie liefert
+  const licenseLabel = $derived(license ? ({ USER: "User", USERLIGHT: "User Light" } as Record<string, string>)[license] ?? license : "");
+  const primary = $derived(phones.find((p) => p.primary));
+  const signaling = $derived(numbers.find((n) => n.selected));
+  const always = $derived(redirects.filter((r) => r.kind === "always" && !r.group));
+  const activeRedirects = $derived(always.filter((r) => r.enabled).length);
+  const stateText = $derived({
+    off: t("Softphone aus"),
+    starting: t("Softphone startet …"),
+    ready: t("Softphone bereit"),
+    error: t("Softphone nicht angemeldet"),
+  } as Record<string, string>);
+
+  async function run(f: () => Promise<unknown>) {
+    try {
+      await f();
+      notice = "";
+    } catch (e) {
+      notice = String(e);
+    }
+  }
+  const loadPhones = () => run(async () => (phones = await invoke<PhoneView[]>("phones")));
+  const loadNumbers = () => run(async () => (numbers = await invoke<SignalingNumber[]>("signaling_numbers")));
+  const loadRedirects = () => run(async () => (redirects = await invoke<Redirect[]>("redirects")));
+
+  onMount(() => {
+    // Ruhe kommt aus der Präsenz; die läuft erst, wenn die Tasten geladen sind.
+    if (!fkeys.loaded) loadFkeys();
+    loadPhones();
+    loadNumbers();
+    loadRedirects();
+    invoke<Account[]>("accounts").then((a) => (accounts = a)).catch(() => {});
+    // Ohne Lizenzangabe bleibt die Zeile einfach weg
+    invoke<string | null>("account_license").then((l) => (license = l)).catch(() => {});
+    // Änderungen aus anderen Clients nachziehen, solange das Menü offen ist
+    const off = [
+      listen("me-signaling", () => loadNumbers()),
+      listen("me-phones", () => loadPhones()),
+      listen("reach-changed", () => loadRedirects()),
+    ];
+    return () => off.forEach((p) => p.then((f) => f()));
+  });
+
+  // Untermenü auf Höhe der angeklickten Zeile, wie in der STARFACE-App
+  let subTop = $state(0);
+  let itemsEl = $state<HTMLElement>();
+  const toggle = (name: typeof sub, e: MouseEvent) => {
+    subTop = (e.currentTarget as HTMLElement).offsetTop - (itemsEl?.scrollTop ?? 0);
+    sub = sub === name ? "" : name;
+  };
+  // Ragt das Untermenü unten aus dem Fenster, rückt es nach oben; ist es höher
+  // als das Fenster, begrenzt CSS die Höhe und die Liste darin scrollt.
+  let menuEl = $state<HTMLElement>();
+  let subEl = $state<HTMLElement>();
+  let subShift = $state(0);
+  function fitSub() {
+    if (!menuEl || !subEl) return;
+    const margin = 8;
+    const top = menuEl.getBoundingClientRect().top + subTop;
+    const over = top + subEl.offsetHeight - (window.innerHeight - margin);
+    subShift = Math.max(0, Math.min(over, top - margin));
+  }
+  $effect(() => {
+    if (!subEl) return;
+    subTop;
+    fitSub();
+    const ro = new ResizeObserver(fitSub);
+    ro.observe(subEl);
+    window.addEventListener("resize", fitSub);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", fitSub);
+    };
+  });
+  const trustSipCert = () =>
+    run(() => invoke("phone_trust_sip_certificate", { fingerprint: phone.status.sip_certificate }));
+  const setDnd = () => run(() => invoke("fkey_dnd", { enabled: !dnd }));
+  const setPrimary = (id: string) => run(async () => { await invoke("set_primary_phone", { id }); await loadPhones(); });
+  // Manche Anlagen (STARFACE 10) signalisieren eine Nummer nur, wenn es für
+  // sie eine Funktionstaste „Rufnummer signalisieren“ gibt, und setzen sonst
+  // wieder „unterdrücken“. `read_only` der Anlage sperrt dagegen nichts: Die
+  // STARFACE-App wertet es nicht aus und lässt jede Nummer wählen.
+  let numberHint = $state("");
+  const setNumber = (id: string) =>
+    run(async () => {
+      const wanted = numbers.find((n) => n.id === id);
+      await invoke("set_signaling_number", { id });
+      await loadNumbers();
+      await loadSignaling();
+      numberHint = wanted && !wanted.suppressed && numbers.find((n) => n.selected)?.suppressed
+        ? t("Die Anlage signalisiert {number} nicht. Lege dafür eine Funktionstaste „Rufnummer signalisieren“ an.", { number: wanted.number })
+        : "";
+    });
+  const setRedirect = (r: Redirect) => run(async () => { await invoke("redirect_enable", { id: r.id, enabled: !r.enabled }); await loadRedirects(); });
+  const setAll = (enabled: boolean) =>
+    run(async () => {
+      for (const r of always.filter((r) => r.enabled !== enabled)) await invoke("redirect_enable", { id: r.id, enabled });
+      await loadRedirects();
+    });
+  // Telefone ohne das technische „SIP/“ davor, wie in der STARFACE-App
+  const phoneName = (p: PhoneView) => p.name.replace(/^SIP\//, "");
+  const numberLabel = (n: SignalingNumber) => (n.suppressed ? t("Rufnummer unterdrücken") : n.number);
+</script>
+
+<div class="menu" bind:this={menuEl}>
+  <!-- Bei niedrigem Fenster scrollen die Einträge; das Untermenü bleibt daneben -->
+  <div class="items" bind:this={itemsEl}>
+  <div class="head">
+    <span class="big">
+      {#if avatar}<img src={avatar} alt="" />{:else}{initials}{/if}
+      <span class="bub"><ChatBubble state={chat} /></span>
+      {#if dnd}<span class="dndb" title={t("Bitte nicht stören")}><Icon name="dnd" size={22} /></span>{/if}
+      {#if activeRedirects}<span class="rdb" title={t("Umleitung aktiv")}><Icon name="redirect" size={15} /></span>{/if}
+    </span>
+    <strong>{session.display_name}</strong>
+    <span class="muted">STARFACE {session.server_version} · {session.server.replace(/^https?:\/\//, "")}</span>
+    {#if licenseLabel}<span class="muted">{t("Lizenz")}: {licenseLabel}</span>{/if}
+    <span class="muted state"><span class="reg {phone.status.state}"></span>{stateText[phone.status.state]}</span>
+    {#if !connection.online}<span class="notice">{t("Keine Verbindung zur Anlage")}</span>
+    {:else if phone.status.state === "error" && phone.status.detail}<span class="notice">{t(phone.status.detail)}</span>{/if}
+    {#if phone.status.state === "error" && phone.status.sip_certificate}
+      <code class="fp">{phone.status.sip_certificate}</code>
+      <button class="certok" onclick={trustSipCert}>{t("SIP-Zertifikat bestätigen")}</button>
+    {/if}
+  </div>
+
+  <button class="row" class:on={dnd} onclick={setDnd}>
+    <span class="ic dnd"><Icon name="dnd" size={22} /></span>
+    <span class="lbl">{t("Bitte nicht stören")}</span>
+    {#if dnd}<span class="pill">{t("an")}</span>{/if}
+  </button>
+  <button class="row" class:open={sub === "chat"} onclick={(e) => toggle("chat", e)}>
+    <span class="ic"><span class="bubble"><ChatBubble state={chat} /></span></span>
+    <span class="lbl">{chatLabel}</span><span class="more"><Icon name="chevron" size={20} /></span>
+  </button>
+  <button class="row" class:open={sub === "phone"} onclick={(e) => toggle("phone", e)}>
+    <span class="ic"><Icon name="headset" size={20} /></span>
+    <span class="lbl">{primary ? phoneName(primary) : t("Primäres Telefon")}</span><span class="more"><Icon name="chevron" size={20} /></span>
+  </button>
+  <button class="row" class:open={sub === "number"} onclick={(e) => toggle("number", e)}>
+    <span class="ic"><Icon name="eye" size={20} /></span>
+    <span class="lbl">{signaling ? numberLabel(signaling) : t("Rufnummer signalisieren")}</span><span class="more"><Icon name="chevron" size={20} /></span>
+  </button>
+  <button class="row" class:open={sub === "redirect"} onclick={(e) => toggle("redirect", e)}>
+    <span class="ic"><Icon name="redirect" size={20} /></span>
+    <span class="lbl">{t("Umleitungen")}</span>
+    {#if activeRedirects}<span class="count">{activeRedirects}</span>{/if}
+    <span class="more"><Icon name="chevron" size={20} /></span>
+  </button>
+  {#if notice && connection.online}<span class="notice">{notice}</span>{/if}
+
+  <hr />
+  <button class="row plain" onclick={onsettings}><span class="ic"><Icon name="settings" size={20} /></span><span class="lbl">{t("Einstellungen")}</span></button>
+  <button class="row plain" class:open={sub === "account"} onclick={(e) => toggle("account", e)}>
+    <span class="ic"><Icon name="contacts" size={20} /></span><span class="lbl">{t("Konto wechseln")}</span>
+    {#if others.length}<span class="count">{others.length}</span>{/if}
+    <span class="more"><Icon name="chevron" size={20} /></span>
+  </button>
+  <button class="row plain" onclick={onlogout}><span class="ic"><Icon name="logout" size={20} /></span><span class="lbl">{t("Abmelden")}</span></button>
+  </div>
+
+  {#if sub}
+    <div class="sub" class:wide={sub === "number"} bind:this={subEl} style="top: {subTop - subShift}px">
+      {#if sub === "chat"}
+        <OwnStatus userId={session.user_id} />
+      {:else if sub === "phone"}
+        <span class="title">{t("Primäres Telefon auswählen")}</span>
+        {#each phones as p (p.id)}
+          <button class="opt" class:sel={p.primary} onclick={() => setPrimary(p.id)}>{phoneName(p)}{#if p.primary}<span class="tick"><Icon name="check" size={16} /></span>{/if}</button>
+        {:else}<span class="muted pad">{t("Keine Telefone")}</span>{/each}
+        <span class="muted pad">{t("Das Wählen erfolgt über dieses Telefon.")}</span>
+      {:else if sub === "number"}
+        <span class="title">{t("Rufnummer signalisieren")}</span>
+        {#each numbers as n (n.id)}
+          <button class="opt" class:sel={n.selected} onclick={() => setNumber(n.id)}>
+            {#if n.group}<span class="grp"><Icon name="groups" size={16} /> {n.group}:</span>{/if}<span class="num">{numberLabel(n)}</span>{#if n.selected}<span class="tick"><Icon name="check" size={16} /></span>{/if}</button>
+        {/each}
+        {#if numberHint}
+          <span class="hint warn">{numberHint}</span>
+        {/if}
+      {:else if sub === "account"}
+        <span class="title">{t("Konto wechseln")}</span>
+        <div class="scroll">
+          {#each others as a (a.server + a.user_id)}
+            <button class="opt" onclick={() => onswitch(a)}>
+              <span class="rd"><span>{a.display_name || host(a.server)}</span>{#if a.display_name}<small class="muted">{host(a.server)}</small>{/if}</span>
+            </button>
+          {:else}<span class="muted pad">{t("Keine weiteren Konten gespeichert")}</span>{/each}
+        </div>
+        {#if phone.status.calls.length}<span class="muted pad">{t("Während eines Gesprächs lässt sich das Konto nicht wechseln")}</span>{/if}
+        <button class="all" onclick={onadd}>{t("Konto hinzufügen")}</button>
+        <span class="muted pad">{t("Das bisherige Konto bleibt gespeichert, ist aber getrennt: Anrufe dafür kommen hier nicht an.")}</span>
+      {:else if sub === "redirect"}
+        <span class="title">{t("Umleitung: Immer")}</span>
+        {#if always.length}
+          <button class="all" onclick={() => setAll(!always.every((r) => r.enabled))}>
+            {always.every((r) => r.enabled) ? t("Alle deaktivieren") : t("Alle aktivieren")}
+          </button>
+        {/if}
+        {#each always as r (r.id)}
+          <button class="opt" class:sel={r.enabled} onclick={() => setRedirect(r)}>
+            <span class="rd"><span>{r.called_number}</span><small class="muted">→ {r.target.number || r.target.mailbox || t("kein Ziel")}</small></span>
+            <span class="switch" class:on={r.enabled}></span>
+          </button>
+        {:else}<span class="muted pad">{t("Keine Umleitungen")}</span>{/each}
+      {/if}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .menu {
+    position: absolute; left: 0; top: calc(100% + 0.4rem); z-index: 15; width: 19rem;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #000a;
+    display: flex; flex-direction: column; padding: 0.6rem;
+    max-height: calc(100vh - 5rem); box-sizing: border-box;
+  }
+  .items { display: flex; flex-direction: column; gap: 0.3rem; min-height: 0; overflow-y: auto; }
+  .items > * { flex: none; }
+  .head { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.4rem 0 0.7rem; text-align: center; }
+  .big {
+    position: relative; width: 4.6rem; height: 4.6rem; border-radius: 50%; margin-bottom: 0.4rem;
+    display: grid; place-items: center; font-size: 1.4rem; font-weight: 600; color: #fff;
+    background: linear-gradient(135deg, #3a7bd5, #00a37a); border: 3px solid var(--green);
+  }
+  .big img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+  .bub { position: absolute; right: -0.4rem; top: -0.2rem; width: 1.6rem; height: 1.45rem; }
+  .dndb { position: absolute; left: -0.3rem; top: -0.2rem; display: grid; color: var(--red); background: #fff; border-radius: 50%; }
+  .rdb { position: absolute; left: -0.2rem; bottom: 0; width: 1.45rem; height: 1.45rem; border-radius: 50%; display: grid; place-items: center; background: #111; color: #fff; border: 2px solid #fff; }
+  .count { min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem; border-radius: 999px; display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; background: var(--accent); color: var(--on-accent); }
+  .grp { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600; margin-right: 0.3rem; white-space: nowrap; }
+  /* Reicht der Platz nicht, rutscht die Nummer als Ganzes in die nächste Zeile */
+  .opt:has(.grp) { flex-wrap: wrap; row-gap: 0.1rem; }
+  .num { white-space: nowrap; }
+  .head strong { font-size: 1.05rem; }
+  .muted { color: var(--muted); font-size: 0.82rem; }
+  .state { display: flex; align-items: center; gap: 0.35rem; }
+  .reg { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #777; }
+  .reg.ready { background: var(--green); }
+  .reg.starting { background: var(--accent); }
+  .reg.error { background: var(--red); }
+  .row {
+    display: flex; align-items: center; gap: 0.7rem; text-align: left; padding: 0.55rem 0.6rem;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px;
+  }
+  .row:hover, .row.open { border-color: var(--accent); }
+  .row.plain { background: none; border-color: transparent; }
+  .row.plain:hover { background: var(--panel-2); }
+  .ic { width: 1.4rem; display: grid; place-items: center; flex: none; color: var(--muted); }
+  .ic.dnd { color: #9aa0a6; }
+  .row.on .ic.dnd { color: var(--red); }
+  .bubble { width: 1.2rem; height: 1.1rem; }
+  .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .more { display: grid; transform: rotate(-90deg); color: var(--muted); }
+  .pill { font-size: 0.72rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--red); color: #fff; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 0.3rem 0 0; width: 100%; }
+  .notice { color: var(--accent-text); font-size: 0.85rem; padding: 0 0.3rem; }
+  .fp { font-size: 0.72rem; word-break: break-all; padding: 0 0.3rem; color: var(--muted); }
+  .certok { align-self: center; }
+
+  .sub {
+    position: absolute; left: calc(100% + 0.4rem); width: 18rem;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #000a;
+    display: flex; flex-direction: column; padding: 0.5rem;
+    max-height: calc(100vh - 1rem); overflow-y: auto;
+  }
+  /* Rufnummern: so breit wie nötig (Gruppenname und Nummer in einer Zeile), höchstens bis zum Fensterrand */
+  .sub.wide { width: max-content; min-width: 18rem; max-width: calc(100vw - 21rem); }
+  .sub > * { flex: none; }
+  .sub > .scroll { flex: 0 1 auto; min-height: 3rem; overflow-y: auto; display: flex; flex-direction: column; }
+  .title { font-weight: 600; padding: 0.3rem 0.6rem 0.5rem; }
+  .opt { display: flex; align-items: center; gap: 0.6rem; background: none; border: none; text-align: left; padding: 0.5rem 0.6rem; border-radius: 4px; }
+  .opt:hover:not(:disabled) { background: var(--panel-2); }
+  .opt.sel { font-weight: 600; }
+  .opt:disabled { opacity: 0.4; cursor: not-allowed; }
+  .hint { display: block; max-width: 18rem; padding: 0.4rem 0.6rem 0.2rem; font-size: 0.8rem; color: var(--muted); }
+  .hint.warn { color: var(--accent-text); }
+  .tick { margin-left: auto; color: var(--accent-text); display: grid; }
+  .pad { padding: 0.4rem 0.6rem; }
+  .all { margin: 0 0.4rem 0.5rem; padding: 0.45rem; font-weight: 600; }
+  .rd { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .rd small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .switch { position: relative; width: 2.1rem; height: 1.15rem; border-radius: 999px; background: var(--line); flex: none; }
+  .switch::after { content: ""; position: absolute; left: 0.15rem; top: 0.15rem; width: 0.85rem; height: 0.85rem; border-radius: 50%; background: #fff; transition: left 0.15s; }
+  .switch.on { background: var(--green); }
+  .switch.on::after { left: 1.1rem; }
+  /* Niedriges Fenster: kleineres Profilbild, damit mehr Einträge sichtbar bleiben */
+  @media (max-height: 640px) {
+    .head { padding: 0.2rem 0 0.4rem; }
+    .big { width: 3rem; height: 3rem; font-size: 1rem; margin-bottom: 0.2rem; }
+  }
+</style>

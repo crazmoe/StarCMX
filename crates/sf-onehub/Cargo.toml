@@ -1,0 +1,13 @@
+[package]
+name = "sf-onehub"
+description = "Verbindung zur OneHub-gRPC-API der STARFACE mit Bearer-Token"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sf-backoff.workspace = true
+sf-proto.workspace = true
+sf-tls.workspace = true
+thiserror.workspace = true
+tonic.workspace = true

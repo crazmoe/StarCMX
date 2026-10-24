@@ -1,0 +1,57 @@
+[package]
+name = "starcmx"
+description = "Desktop-App (Tauri 2)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "starcmx_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+sf-auth.workspace = true
+sf-core.workspace = true
+sf-onehub.workspace = true
+sf-tls.workspace = true
+sf-doorcam.workspace = true
+sf-sip = { path = "../../../crates/sf-sip" }
+sf-chat = { path = "../../../crates/sf-chat" }
+sf-audio = { path = "../../../crates/sf-audio" }
+sf-busylight = { path = "../../../crates/sf-busylight" }
+sf-headset = { path = "../../../crates/sf-headset" }
+arboard = { version = "3", default-features = false }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+base64 = "0.23"
+tokio = { workspace = true, features = ["sync", "time"] }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-dialog = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5"
+enumflags2 = "0.7"
+webkit2gtk = "2"
+gtk = "0.18"
+
+[target.'cfg(windows)'.dependencies]
+tauri-plugin-single-instance = "2"
+tauri-plugin-global-shortcut = "2"
+webview2-com = "0.39"
+winreg = "0.55"
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_StationsAndDesktops",
+    "Win32_System_SystemInformation",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }

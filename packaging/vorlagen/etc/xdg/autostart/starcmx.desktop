@@ -1,0 +1,15 @@
+# StarCMX für alle Benutzer beim Anmelden starten (deb/rpm).
+# Ablage: /etc/xdg/autostart/starcmx.desktop
+# Ein Benutzer kann das abschalten, indem er in ~/.config/autostart eine
+# gleichnamige Datei mit Hidden=true anlegt; der Schalter "Beim Anmelden am
+# Rechner starten" in StarCMX tut das nicht. Für alle verbindlich besser:
+# autostart[$i]=true in /etc/xdg/starcmxrc (wirkt ab dem ersten Start).
+# Flatpak: Exec=flatpak run ch.crazmoe.StarCMX
+[Desktop Entry]
+Type=Application
+Name=StarCMX
+Exec=starcmx
+Icon=starcmx
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-KDE-autostart-phase=2
