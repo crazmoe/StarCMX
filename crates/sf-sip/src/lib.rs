@@ -153,6 +153,17 @@ pub const AUDIO_DRIVER: &str = "wasapi";
 #[cfg(not(windows))]
 pub const AUDIO_DRIVER: &str = "pipewire";
 
+/// Modul und Gerät für baresip. Ohne Gerät nimmt PipeWire das Standardgerät;
+/// das wasapi-Modul braucht dafür ausdrücklich `default` (sonst schlägt
+/// `GetDevice("")` fehl und es bleibt still).
+pub fn audio_device(module: &str, device: &str) -> String {
+    match device {
+        "" if module == "wasapi" => format!("{module},default"),
+        "" => module.to_owned(),
+        _ => format!("{module},{device}"),
+    }
+}
+
 /// In libbaresip einkompilierte Module, die geladen werden
 #[cfg(windows)]
 const MODULES: &[&str] = &[
@@ -188,8 +199,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            audio_player: AUDIO_DRIVER.into(),
-            audio_source: AUDIO_DRIVER.into(),
+            audio_player: audio_device(AUDIO_DRIVER, ""),
+            audio_source: audio_device(AUDIO_DRIVER, ""),
             sip_listen: None,
             verify_server: true,
             ca_file: (!cfg!(windows)).then(|| "/etc/ssl/certs/ca-certificates.crt".into()),
@@ -497,7 +508,7 @@ impl Softphone {
         self.cmd(
             ffi::OP_AUSRC,
             Some(call_id),
-            Some(&format!("{module},{device}")),
+            Some(&audio_device(module, device)),
         )
     }
 
@@ -510,7 +521,7 @@ impl Softphone {
         self.cmd(
             ffi::OP_AUPLAY,
             Some(call_id),
-            Some(&format!("{module},{device}")),
+            Some(&audio_device(module, device)),
         )
     }
 
@@ -547,6 +558,17 @@ impl Drop for Softphone {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wasapi_needs_explicit_default() {
+        assert_eq!(audio_device("wasapi", ""), "wasapi,default");
+        assert_eq!(
+            audio_device("wasapi", "{0.0.0.1}.{x}"),
+            "wasapi,{0.0.0.1}.{x}"
+        );
+        assert_eq!(audio_device("pipewire", ""), "pipewire");
+        assert_eq!(audio_device("pipewire", "usb"), "pipewire,usb");
+    }
 
     #[test]
     fn aor_uses_tls_and_mandatory_srtp() {
