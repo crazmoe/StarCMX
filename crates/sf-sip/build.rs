@@ -22,7 +22,7 @@ const SYSTEM_LIBS: &[&str] = &["openssl", "zlib", "libpipewire-0.3", "libpulse",
 /// Windows-Bibliotheken, die re, baresip und OpenSSL brauchen
 const WINDOWS_LIBS: &[&str] = &[
     "qwave", "iphlpapi", "wsock32", "ws2_32", "dbghelp", "winmm", "gdi32", "crypt32", "strmiids",
-    "ole32", "oleaut32", "advapi32", "user32", "bcrypt",
+    "ole32", "oleaut32", "advapi32", "user32", "bcrypt", "shell32",
 ];
 
 fn main() {
