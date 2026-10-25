@@ -14,6 +14,10 @@
 //! von sich aus „Pause“, ohne dass jemand gedrückt hat. Kurz nach jedem
 //! Wechsel des Anrufzustands zählt die Mediensteuerung deshalb nicht, außer
 //! es klingelt.
+//!
+//! Im Gespräch schicken manche Headsets ihre Taste nicht mehr über AVRCP.
+//! Was Windows daraus als App-Befehl (`WM_APPCOMMAND`) macht, sieht StarCMX
+//! über einen Shell-Hook ([`shell_hook`]).
 
 use std::cell::RefCell;
 use std::sync::Mutex;
@@ -92,6 +96,7 @@ pub fn set(app: &AppHandle, active: bool) {
         return;
     }
     tracing::debug!(active, "Medientasten");
+    shell_hook::start(app);
     hotkeys(app, active);
     update(app, active);
     *current = active;
@@ -147,7 +152,21 @@ fn hotkeys(app: &AppHandle, active: bool) {
     }
 }
 
+/// Letzter weitergegebener Tastendruck
+static LAST_PRESS: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Kommt derselbe Druck auf zwei Wegen an, zählt er nur einmal
+const DOUBLE: Duration = Duration::from_millis(800);
+
 fn press(app: &AppHandle, button: Button) {
+    {
+        let mut last = LAST_PRESS.lock().unwrap_or_else(|e| e.into_inner());
+        if last.is_some_and(|at| at.elapsed() < DOUBLE) {
+            tracing::debug!(?button, "Tastendruck doppelt, übergangen");
+            return;
+        }
+        *last = Some(Instant::now());
+    }
     let app = app.clone();
     tauri::async_runtime::spawn(async move { super::media_key(&app, button).await });
 }
@@ -223,6 +242,109 @@ fn create(app: &AppHandle) -> windows::core::Result<SystemMediaTransportControls
         Ok(())
     }))?;
     Ok(smtc)
+}
+
+/// App-Befehle aller Fenster über einen Shell-Hook mitlesen
+mod shell_hook {
+    use std::sync::OnceLock;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    use sf_headset::Button;
+    use tauri::AppHandle;
+    use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HSHELL_APPCOMMAND, MSG,
+        RegisterClassW, RegisterShellHookWindow, RegisterWindowMessageW, WINDOW_EX_STYLE,
+        WINDOW_STYLE, WNDCLASSW,
+    };
+    use windows::core::w;
+
+    static APP: OnceLock<AppHandle> = OnceLock::new();
+    /// Nachrichtennummer der Shell-Hook-Meldungen
+    static SHELLHOOK: AtomicU32 = AtomicU32::new(0);
+
+    const MEDIA_STOP: u32 = 13;
+    const MEDIA_PLAY_PAUSE: u32 = 14;
+    const MEDIA_PLAY: u32 = 46;
+    const MEDIA_PAUSE: u32 = 47;
+
+    /// Einmal starten, eigener Thread mit unsichtbarem Fenster
+    pub fn start(app: &AppHandle) {
+        if APP.set(app.clone()).is_err() {
+            return;
+        }
+        std::thread::spawn(|| {
+            if let Err(e) = run() {
+                tracing::warn!(error = %e, "Shell-Hook nicht angemeldet");
+            }
+        });
+    }
+
+    fn run() -> windows::core::Result<()> {
+        unsafe {
+            let instance = GetModuleHandleW(None)?.into();
+            let class = w!("StarCMXShellHook");
+            let wc = WNDCLASSW {
+                lpfnWndProc: Some(wndproc),
+                hInstance: instance,
+                lpszClassName: class,
+                ..Default::default()
+            };
+            RegisterClassW(&wc);
+            let hwnd = CreateWindowExW(
+                WINDOW_EX_STYLE(0),
+                class,
+                w!(""),
+                WINDOW_STYLE(0),
+                0,
+                0,
+                0,
+                0,
+                None,
+                None,
+                Some(instance),
+                None,
+            )?;
+            SHELLHOOK.store(RegisterWindowMessageW(w!("SHELLHOOK")), Ordering::Relaxed);
+            RegisterShellHookWindow(hwnd).ok()?;
+            let mut msg = MSG::default();
+            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                DispatchMessageW(&msg);
+            }
+        }
+        Ok(())
+    }
+
+    extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        let hook = SHELLHOOK.load(Ordering::Relaxed);
+        if hook != 0 && msg == hook && wparam.0 as u32 == HSHELL_APPCOMMAND {
+            // GET_APPCOMMAND_LPARAM: oberes Wort ohne Geräte-Bits
+            let cmd = ((lparam.0 as u32) >> 16) & 0x0FFF;
+            command(cmd);
+        }
+        unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
+    }
+
+    fn command(cmd: u32) {
+        let active = *super::ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
+        tracing::debug!(cmd, active, "App-Befehl");
+        if !active {
+            return;
+        }
+        let button = match cmd {
+            MEDIA_PLAY_PAUSE | MEDIA_PLAY | MEDIA_PAUSE => Button::HookToggle,
+            MEDIA_STOP => Button::HookOn,
+            _ => return,
+        };
+        if super::just_changed() {
+            tracing::debug!(cmd, "App-Befehl kurz nach Anrufwechsel übergangen");
+            return;
+        }
+        if let Some(app) = APP.get() {
+            super::press(app, button);
+        }
+    }
 }
 
 #[cfg(test)]
