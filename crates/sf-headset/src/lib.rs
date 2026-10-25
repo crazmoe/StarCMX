@@ -385,6 +385,7 @@ impl Worker {
                 }
             };
             tracing::info!(name = %found.name, dev = %found.dev.display(), "Headset gefunden");
+            tracing::debug!(tel = ?found.tel, "Telefoniefelder");
             self.spawn_reader(&found, reader);
             self.devices.push(Open {
                 dev: found.dev,
@@ -409,9 +410,14 @@ impl Worker {
                 let mut buf = [0u8; 256];
                 loop {
                     let n = match file.read(&mut buf) {
-                        Ok(0) | Err(_) => break,
+                        Ok(0) => break,
+                        Err(e) => {
+                            tracing::debug!(error = %e, "Headset nicht mehr lesbar");
+                            break;
+                        }
                         Ok(n) => n,
                     };
+                    tracing::trace!(report = ?&buf[..n], "Headset-Report");
                     if stop.load(Ordering::Relaxed) {
                         return;
                     }

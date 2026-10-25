@@ -124,10 +124,10 @@ pub async fn softphone_config(prefs: &Prefs) -> sf_sip::Config {
         .await
         .unwrap_or_default();
     if let Some(dev) = sf_audio::pick(&prefs.speakers, &present.speakers) {
-        config.audio_player = format!("{},{dev}", sf_sip::AUDIO_DRIVER);
+        config.audio_player = sf_sip::audio_device(sf_sip::AUDIO_DRIVER, &dev);
     }
     if let Some(dev) = sf_audio::pick(&prefs.microphones, &present.microphones) {
-        config.audio_source = format!("{},{dev}", sf_sip::AUDIO_DRIVER);
+        config.audio_source = sf_sip::audio_device(sf_sip::AUDIO_DRIVER, &dev);
     }
     config
 }

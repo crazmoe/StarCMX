@@ -229,12 +229,12 @@ impl Phone {
             .await
         {
             Ok(c) => c,
-            // Ohne uci_autoprovisioning legt die Anlage kein Linux-App-Telefon
-            // an; das einer Desktop-App bekommt jeder Benutzer.
+            // Ohne uci_autoprovisioning legt die Anlage manche App-Telefone
+            // nicht an; das einer anderen Desktop-App bekommt jeder Benutzer.
             Err(e) if e.permission_denied().is_some() => {
                 tracing::info!(
                     reason = e.permission_denied(),
-                    "Linux-App-Telefon verweigert, nehme das einer Desktop-App"
+                    "App-Telefon verweigert, nehme das einer anderen Desktop-App"
                 );
                 hub.register_sip_device(sf_onehub::SIP_DEVICE_ID_FALLBACK, app_version)
                     .await

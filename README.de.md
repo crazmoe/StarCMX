@@ -32,8 +32,13 @@ Busylight, Headset-Tasten), dazu unter Windows:
 - **Autostart**, Abwesend bei Inaktivität, Bildschirmschoner oder gesperrtem Bildschirm,
   `tel:`/`callto:`/`sip:`-Links (StarCMX steht auch unter *Einstellungen › Apps › Standard-Apps*).
 
-Unter Windows (noch) nicht: mehrere Anlagen gleichzeitig („Weitere Anlage öffnen“), Play/Pause von
-Bluetooth-Headsets, signierter Installer.
+- **Bluetooth-Headsets**: Im Anruf nimmt ihre Play/Pause-Taste an oder legt auf (StarCMX fängt
+  die Medientasten ab, solange ein Anruf klingelt oder läuft).
+
+- **Mehrere Anlagen gleichzeitig** („Weitere Anlage öffnen“ im Tray) wie unter Linux: je Anlage ein
+  StarCMX, abgestimmt über Named Pipes.
+
+Unter Windows (noch) nicht: signierter Installer.
 
 ## Installation
 
@@ -88,9 +93,10 @@ StarCLX-Repo, das als Git-Submodul unter `upstream/` eingebunden ist (fest auf e
 ### Abgleich mit StarCLX
 
 Der Code ist aufgebaut wie in StarCLX. Wo Windows etwas anderes braucht, liegt neben der
-Linux-Variante eine mit derselben Schnittstelle (`instances_win.rs`, `shortcuts_win.rs`,
+Linux-Variante eine mit derselben Schnittstelle (`shortcuts_win.rs`, `media_win.rs`,
 `flatpak_none.rs`, `sf-audio/src/wasapi.rs`, `sf-headset/src/hid.rs`). Änderungen aus StarCLX
-lassen sich deshalb meist direkt übernehmen. Vier Zustandsmodule der Oberfläche heissen hier
+lassen sich deshalb meist direkt übernehmen. `instances.rs` ist gemeinsam; seine D-Bus-Teile gelten
+nur unter Linux, unter Windows tritt `instances_pipe.rs` an ihre Stelle. Vier Zustandsmodule der Oberfläche heissen hier
 `*-state.svelte.ts` (etwa `chat-state.svelte.ts`), weil Windows `chat.svelte.ts` und
 `Chat.svelte` nicht auseinanderhält:
 
