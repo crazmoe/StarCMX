@@ -43,6 +43,13 @@ struct Inner {
     testing: bool,
 }
 
+/// Anrufe fürs Headset: ohne die, die an einem anderen eigenen Telefon
+/// angenommen wurden. Sonst ginge das Headset hier ins Gespräch, und seine
+/// Taste legte das Gespräch am anderen Telefon auf.
+fn headset_lines(lines: &[DeviceLine]) -> Vec<DeviceLine> {
+    lines.iter().filter(|l| !l.elsewhere).cloned().collect()
+}
+
 /// Gespräch, auf das sich Stumm- und Auflegetaste beziehen: das laufende,
 /// sonst irgendeins, das nicht klingelt (z. B. gehalten)
 fn talking(lines: &[DeviceLine]) -> Option<&DeviceLine> {
@@ -153,8 +160,9 @@ fn refresh(app: &AppHandle) {
         return;
     }
     let devices = instances::devices();
-    mpris::set(app, !devices.lines.is_empty());
-    let s = state_of(&devices.lines, &devices.muted);
+    let lines = headset_lines(&devices.lines);
+    mpris::set(app, !lines.is_empty());
+    let s = state_of(&lines, &devices.muted);
     inner.headset.get_or_insert_with(|| open(app)).set(s);
 }
 
@@ -168,7 +176,7 @@ fn open(app: &AppHandle) -> Headset {
 
 async fn pressed(app: &AppHandle, button: Button) {
     let devices = instances::devices();
-    let action = action_for(button, &devices.lines, &devices.muted);
+    let action = action_for(button, &headset_lines(&devices.lines), &devices.muted);
     tracing::debug!(?button, ?action, "Headset-Taste");
     match action.profile() {
         Some(p) if p != instances::profile() => instances::send_headset_action(p, &action),
@@ -283,6 +291,7 @@ mod tests {
             id: id.into(),
             ringing,
             held,
+            elsewhere: false,
         }
     }
 
@@ -383,6 +392,19 @@ mod tests {
         assert!(!play_pause_counts("never", false));
         // Unbekannter Wert wie "auto"
         assert!(!play_pause_counts("", true));
+    }
+
+    #[test]
+    fn call_answered_elsewhere_leaves_headset_alone() {
+        let none = BTreeMap::new();
+        let mut other = line("", "a", false, false);
+        other.elsewhere = true;
+        let lines = headset_lines(&[other]);
+        assert_eq!(state_of(&lines, &none), State::default());
+        assert_eq!(
+            action_for(Button::HookToggle, &lines, &none),
+            Action::Nothing
+        );
     }
 
     #[test]

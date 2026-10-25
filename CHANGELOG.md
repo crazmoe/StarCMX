@@ -1,5 +1,17 @@
 # Änderungen
 
+## Unveröffentlicht
+
+### Zwei Clients am selben Konto
+Liefen StarCMX und StarCLX gleichzeitig am selben Konto, nahm Annehmen an einem Client den Anruf
+auch am anderen ab. StarCLX nahm ohne das Recht „Autoprovisionierung“ das App-Telefon der
+Windows-App, das auch StarCMX hat; das ist dort behoben.
+
+- Ein Anruf, der an einem anderen eigenen Telefon angenommen wurde, steht im Call-Manager als
+  „An einem anderen Telefon angenommen“, ohne Stummschalter. Das Headset geht dafür nicht mehr
+  ins Gespräch, und seine Taste legt dieses Gespräch nicht auf
+- Unter Linux (Entwicklung) ist der Ersatz für das App-Telefon wie bei StarCLX das der Mac-App
+
 ## 0.1.0 – 2026-10-23
 
 Erste Testversion für Windows, auf dem Stand von StarCLX 1.6.3.
