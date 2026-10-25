@@ -33,8 +33,10 @@ Busylight, headset buttons), plus on Windows:
 - **Bluetooth headsets**: during a call, their play/pause button answers or hangs up (StarCMX
   catches the media keys while a call rings or runs).
 
-Not (yet) on Windows: several systems at once ("Open another system"), code signing of the
-installer.
+- **Several systems at once** ("Open another system" in the tray), as on Linux: one StarCMX per
+  system, coordinated over named pipes.
+
+Not (yet) on Windows: code signing of the installer.
 
 ## Installation
 
@@ -88,9 +90,10 @@ StarCLX repository, which is a git submodule under `upstream/` (pinned to a comm
 ### Keeping in sync with StarCLX
 
 The code is laid out like StarCLX. Where Windows needs something else, there is a variant with
-the same interface next to the Linux one (`instances_win.rs`, `shortcuts_win.rs`,
+the same interface next to the Linux one (`shortcuts_win.rs`, `media_win.rs`,
 `flatpak_none.rs`, `sf-audio/src/wasapi.rs`, `sf-headset/src/hid.rs`), so changes from StarCLX
-usually apply directly. Four UI state modules are called `*-state.svelte.ts` here (e.g.
+usually apply directly. `instances.rs` is shared; its D-Bus parts are Linux-only, and on Windows
+`instances_pipe.rs` takes their place. Four UI state modules are called `*-state.svelte.ts` here (e.g.
 `chat-state.svelte.ts`), because Windows does not tell `chat.svelte.ts` and `Chat.svelte` apart:
 
 ```sh

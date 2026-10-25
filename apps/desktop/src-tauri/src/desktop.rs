@@ -583,6 +583,16 @@ pub fn take_over_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) {
     }
 }
 
+/// Neuer Hauptclient nach einem Ausfall: die Kürzel gehörten dem alten.
+#[cfg(windows)]
+pub fn take_over_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) {
+    if hotkeys.enabled
+        && let Err(e) = crate::shortcuts::apply(app, hotkeys)
+    {
+        tracing::warn!(error = %e, "Tastenkürzel nicht übernommen");
+    }
+}
+
 /// Meldet die Tastenkürzel systemweit an bzw. ab.
 #[cfg(windows)]
 pub fn apply_hotkeys(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {

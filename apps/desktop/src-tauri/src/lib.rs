@@ -16,10 +16,6 @@ mod flatpak;
 #[path = "flatpak_none.rs"]
 mod flatpak;
 mod i18n;
-#[cfg(target_os = "linux")]
-mod instances;
-#[cfg(windows)]
-#[path = "instances_win.rs"]
 mod instances;
 mod log;
 mod login;
@@ -823,8 +819,8 @@ pub fn run() {
         tracing::error!(error = %e, "Schlüsselbund nicht verfügbar; Anmeldung wird nicht gespeichert");
     }
 
-    // Unter Linux startet der Browser für starface-app:// einen zweiten
-    // Prozess; der reicht die URL an den Hauptclient weiter und endet.
+    // Ein Link (starface-app://, tel: …) startet einen zweiten Prozess; der
+    // reicht die URL an den Hauptclient weiter und endet.
     // Tastenkürzel kommen als `--action …` über denselben Weg.
     if !instances::init() {
         return;
@@ -833,15 +829,9 @@ pub fn run() {
     let (events_tx, mut events_rx) = mpsc::unbounded_channel();
 
     let builder = tauri::Builder::default();
-    // Unter Windows landet ein weiterer Start (Link, Startmenü) bei der
-    // laufenden App; die Kürzel meldet sie selbst systemweit an.
+    // Unter Windows meldet die App die Kürzel selbst systemweit an.
     #[cfg(windows)]
-    let builder = builder
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _| {
-            let app = app.clone();
-            std::thread::spawn(move || activate(&app, &argv));
-        }))
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+    let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
     builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
