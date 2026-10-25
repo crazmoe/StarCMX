@@ -23,6 +23,7 @@ use sf_headset::Button;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use windows::Foundation::TypedEventHandler;
+use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
 use windows::Media::{
     MediaPlaybackStatus, MediaPlaybackType, SystemMediaTransportControls,
     SystemMediaTransportControlsButton, SystemMediaTransportControlsButtonPressedEventArgs,
@@ -43,17 +44,19 @@ type Calls = Vec<(String, bool)>;
 /// So lange nach einem Wechsel zählt die Mediensteuerung nicht
 const QUIET: Duration = Duration::from_secs(3);
 
-/// Wechsel des Anrufzustands festhalten
-fn note_calls() {
+/// Wechsel des Anrufzustands festhalten; true, wenn er sich geändert hat
+fn note_calls() -> bool {
     let calls: Calls = crate::instances::devices()
         .lines
         .iter()
         .map(|l| (l.id.clone(), l.ringing))
         .collect();
     let mut last = LAST_CHANGE.lock().unwrap_or_else(|e| e.into_inner());
-    if last.as_ref().is_none_or(|(c, _)| *c != calls) {
+    let changed = last.as_ref().is_none_or(|(c, _)| *c != calls);
+    if changed {
         *last = Some((calls, Instant::now()));
     }
+    changed
 }
 
 /// Liegt der letzte Wechsel des Anrufzustands erst kurz zurück? Klingelt
@@ -78,13 +81,23 @@ thread_local! {
 
 /// Medientasten an- (Anruf) oder abmelden (kein Anruf)
 pub fn set(app: &AppHandle, active: bool) {
-    note_calls();
+    let changed = note_calls();
     let mut current = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
     if *current == active {
+        // Nach dem Annehmen gibt Windows die Tasten sonst einem anderen
+        // Spieler; StarCMX meldet sich deshalb bei jedem Wechsel neu.
+        if active && changed {
+            update(app, active);
+        }
         return;
     }
     tracing::debug!(active, "Medientasten");
     hotkeys(app, active);
+    update(app, active);
+    *current = active;
+}
+
+fn update(app: &AppHandle, active: bool) {
     let handle = app.clone();
     let result = app.run_on_main_thread(move || {
         if let Err(e) = transport_controls(&handle, active) {
@@ -94,7 +107,21 @@ pub fn set(app: &AppHandle, active: bool) {
     if let Err(e) = result {
         tracing::warn!(error = %e, "Mediensteuerung nicht erreicht");
     }
-    *current = active;
+    if active {
+        std::thread::spawn(log_current_session);
+    }
+}
+
+/// Welcher Spieler bekommt gerade die Medientasten? Nur zur Diagnose.
+fn log_current_session() {
+    let app = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
+        .and_then(|op| op.join())
+        .and_then(|manager| manager.GetCurrentSession())
+        .and_then(|session| session.SourceAppUserModelId());
+    match app {
+        Ok(app) => tracing::debug!(%app, "Mediensteuerung: aktueller Spieler"),
+        Err(e) => tracing::debug!(error = %e, "Mediensteuerung: kein aktueller Spieler"),
+    }
 }
 
 fn hotkeys(app: &AppHandle, active: bool) {
@@ -139,6 +166,7 @@ fn transport_controls(app: &AppHandle, active: bool) -> windows::core::Result<()
         if active {
             smtc.SetIsEnabled(true)?;
             smtc.SetPlaybackStatus(MediaPlaybackStatus::Playing)?;
+            smtc.DisplayUpdater()?.Update()?;
         } else {
             smtc.SetPlaybackStatus(MediaPlaybackStatus::Closed)?;
             smtc.SetIsEnabled(false)?;

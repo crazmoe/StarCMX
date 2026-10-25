@@ -50,6 +50,7 @@ winreg = "0.56"
 windows = { version = "0.62", features = [
     "Foundation",
     "Media",
+    "Media_Control",
     "Win32_Foundation",
     "Win32_Security",
     "Win32_Storage_FileSystem",
