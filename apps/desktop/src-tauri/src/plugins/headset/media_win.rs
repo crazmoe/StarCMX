@@ -12,7 +12,8 @@
 //!
 //! Wechselt Windows beim Annehmen auf das Freisprechprofil (HFP), meldet es
 //! von sich aus „Pause“, ohne dass jemand gedrückt hat. Kurz nach jedem
-//! Wechsel des Anrufzustands zählt die Mediensteuerung deshalb nicht.
+//! Wechsel des Anrufzustands zählt die Mediensteuerung deshalb nicht, außer
+//! es klingelt.
 
 use std::cell::RefCell;
 use std::sync::Mutex;
@@ -55,14 +56,14 @@ fn note_calls() {
     }
 }
 
-/// Liegt der letzte Wechsel des Anrufzustands erst kurz zurück?
+/// Liegt der letzte Wechsel des Anrufzustands erst kurz zurück? Klingelt
+/// es, zählt die Taste immer: Annehmen soll gleich gehen.
 fn just_changed() -> bool {
     note_calls();
-    LAST_CHANGE
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .as_ref()
-        .is_some_and(|(_, at)| at.elapsed() < QUIET)
+    let last = LAST_CHANGE.lock().unwrap_or_else(|e| e.into_inner());
+    last.as_ref().is_some_and(|(calls, at)| {
+        !calls.iter().any(|(_, ringing)| *ringing) && at.elapsed() < QUIET
+    })
 }
 
 const KEYS: [(&str, Button); 2] = [
