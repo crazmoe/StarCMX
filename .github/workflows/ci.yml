@@ -45,7 +45,7 @@ jobs:
 
       - name: OpenSSL aus dem Cache
         id: openssl-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: C:/vcpkg/installed/${{ env.VCPKG_TRIPLET }}
           key: openssl-${{ env.VCPKG_TRIPLET }}-v1
