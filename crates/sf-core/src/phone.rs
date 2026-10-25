@@ -224,10 +224,15 @@ impl Phone {
         app_version: &str,
         events: mpsc::UnboundedSender<PhoneEvent>,
     ) -> PhoneResult<Self> {
-        let creds = match hub
-            .register_sip_device(sf_onehub::SIP_DEVICE_ID, app_version)
-            .await
-        {
+        // Zum Vergleichen lässt sich das App-Telefon wie bei sfctl wählen
+        let device = std::env::var("SF_SIP_DEVICE_ID")
+            .ok()
+            .filter(|d| !d.trim().is_empty());
+        let device = device
+            .as_deref()
+            .map_or(sf_onehub::SIP_DEVICE_ID, str::trim);
+        tracing::info!(device, "App-Telefon anmelden");
+        let creds = match hub.register_sip_device(device, app_version).await {
             Ok(c) => c,
             // Ohne uci_autoprovisioning legt die Anlage manche App-Telefone
             // nicht an; das einer anderen Desktop-App bekommt jeder Benutzer.

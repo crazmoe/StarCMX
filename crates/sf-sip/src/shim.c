@@ -57,6 +57,7 @@ enum {
 	SFSIP_EV_AUDIO_ERROR,
 	SFSIP_EV_CALL_DTMF,
 	SFSIP_EV_END_OF_FILE,
+	SFSIP_EV_LOG,
 };
 
 struct sfsip_event {
@@ -68,6 +69,8 @@ struct sfsip_event {
 	const char *text;
 	int answer_delay;
 	int outgoing;
+	/* Nur SFSIP_EV_LOG: 0 Debug, 1 Info, 2 Warnung, 3 Fehler */
+	int level;
 };
 
 typedef void (sfsip_event_cb)(void *ctx, const struct sfsip_event *e);
@@ -221,6 +224,41 @@ static void emit(int ev, struct ua *ua, struct call *call, const char *text)
 
 	if (event_cb)
 		event_cb(event_ctx, &e);
+}
+
+/* Meldungen von baresip und libre an Rust geben (sonst landen sie auf
+ * stdout, das eine Windows-App nicht hat). Kommt aus beliebigen Threads. */
+static void emit_log(int level, const char *msg)
+{
+	struct sfsip_event e;
+
+	memset(&e, 0, sizeof(e));
+	e.ev = SFSIP_EV_LOG;
+	e.text = msg;
+	e.answer_delay = -1;
+	e.level = level;
+	if (event_cb)
+		event_cb(event_ctx, &e);
+}
+
+static void log_handler(uint32_t level, const char *msg)
+{
+	emit_log((int)level, msg);
+}
+
+static struct log log_sink = { .h = log_handler };
+
+static void dbg_handler(int level, const char *p, size_t len, void *arg)
+{
+	char buf[512];
+	(void)arg;
+
+	if (len >= sizeof(buf))
+		len = sizeof(buf) - 1;
+	memcpy(buf, p, len);
+	buf[len] = '\0';
+	/* libre: DBG_WARNING 4, DBG_ERR 3 und darunter schwerer */
+	emit_log(level <= DBG_ERR ? 3 : level <= DBG_WARNING ? 2 : 0, buf);
 }
 
 static void bevent_handler(enum bevent_ev ev, struct bevent *event, void *arg)
@@ -461,6 +499,8 @@ int sfsip_run(const char *config, const char *software, const char *pinlist,
 		dbg_init(DBG_WARNING, DBG_NONE);
 		log_enable_stdout(false);
 	}
+	dbg_handler_set(dbg_handler, NULL);
+	log_register_handler(&log_sink);
 
 	err = conf_configure_buf((const uint8_t *)config, strlen(config));
 	if (err)
@@ -516,6 +556,8 @@ int sfsip_run(const char *config, const char *software, const char *pinlist,
 	mod_close();
 	re_thread_async_close();
 	libre_close();
+	log_unregister_handler(&log_sink);
+	dbg_handler_set(NULL, NULL);
 
 	event_cb = NULL;
 	event_ctx = NULL;

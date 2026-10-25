@@ -46,6 +46,7 @@ mod ffi {
     pub const EV_AUDIO_ERROR: c_int = 11;
     pub const EV_CALL_DTMF: c_int = 12;
     pub const EV_END_OF_FILE: c_int = 13;
+    pub const EV_LOG: c_int = 14;
 
     #[repr(C)]
     pub struct Event {
@@ -57,6 +58,8 @@ mod ffi {
         pub text: *const c_char,
         pub answer_delay: c_int,
         pub outgoing: c_int,
+        /// Nur `EV_LOG`: 0 Debug, 1 Info, 2 Warnung, 3 Fehler
+        pub level: c_int,
     }
 
     pub type EventCb = unsafe extern "C" fn(ctx: *mut c_void, e: *const Event);
@@ -319,6 +322,10 @@ unsafe extern "C" fn on_event(ctx: *mut c_void, e: *const ffi::Event) {
         peer_name: opt_str(e.peer_name),
     };
     let event = match e.ev {
+        ffi::EV_LOG => {
+            log_line(e.level, &opt_str(e.text));
+            return;
+        }
         ffi::EV_READY => {
             let _ = ctx.ready.try_send(true);
             return;
@@ -372,6 +379,20 @@ unsafe extern "C" fn on_event(ctx: *mut c_void, e: *const ffi::Event) {
         _ => return,
     };
     let _ = ctx.events.send(event);
+}
+
+/// Meldung von baresip bzw. libre ins Protokoll; Debug und Info nur im
+/// ausführlichen Protokoll.
+fn log_line(level: c_int, msg: &str) {
+    let msg = msg.trim_end();
+    if msg.is_empty() {
+        return;
+    }
+    match level {
+        3 => tracing::warn!(target: "sf_sip::baresip", "Fehler: {msg}"),
+        2 => tracing::warn!(target: "sf_sip::baresip", "{msg}"),
+        _ => tracing::debug!(target: "sf_sip::baresip", "{msg}"),
+    }
 }
 
 /// Laufendes Softphone. Beim Drop wird baresip beendet.
