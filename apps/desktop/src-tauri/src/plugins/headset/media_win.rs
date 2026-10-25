@@ -40,7 +40,7 @@ static LAST_CHANGE: Mutex<Option<(Calls, Instant)>> = Mutex::new(None);
 type Calls = Vec<(String, bool)>;
 
 /// So lange nach einem Wechsel zählt die Mediensteuerung nicht
-const QUIET: Duration = Duration::from_millis(1500);
+const QUIET: Duration = Duration::from_secs(3);
 
 /// Wechsel des Anrufzustands festhalten
 fn note_calls() {
