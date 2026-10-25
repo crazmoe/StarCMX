@@ -17,6 +17,9 @@ use crate::i18n::{t, tf};
 
 /// Zuletzt angemeldete Kürzel; unverändert wird nicht neu angemeldet
 static APPLIED: Mutex<Option<Hotkeys>> = Mutex::new(None);
+/// Davon angemeldet; nur diese werden wieder abgemeldet (die Medientasten
+/// des Headset-Plugins bleiben)
+static REGISTERED: Mutex<Vec<Shortcut>> = Mutex::new(Vec::new());
 
 /// `<Control><Shift>w` → `Control+Shift+W`
 fn accelerator(gtk: &str) -> Option<String> {
@@ -61,7 +64,9 @@ pub fn apply(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {
         return Ok(());
     }
     let gs = app.global_shortcut();
-    gs.unregister_all().map_err(|e| e.to_string())?;
+    let mut registered = REGISTERED.lock().unwrap_or_else(|e| e.into_inner());
+    gs.unregister_multiple(registered.drain(..))
+        .map_err(|e| e.to_string())?;
     let mut failed = Vec::new();
     for (action, label) in ACTIONS {
         let binding = hotkeys.binding(action);
@@ -80,9 +85,12 @@ pub fn apply(app: &AppHandle, hotkeys: &Hotkeys) -> Result<(), String> {
                 std::thread::spawn(move || crate::desktop::run_action(&app, action));
             }
         });
-        if let Err(e) = result {
-            tracing::warn!(error = %e, binding, "Tastenkürzel nicht angemeldet");
-            failed.push(t(label));
+        match result {
+            Ok(()) => registered.push(shortcut),
+            Err(e) => {
+                tracing::warn!(error = %e, binding, "Tastenkürzel nicht angemeldet");
+                failed.push(t(label));
+            }
         }
     }
     *applied = Some(hotkeys.clone());

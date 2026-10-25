@@ -32,8 +32,11 @@ Busylight, Headset-Tasten), dazu unter Windows:
 - **Autostart**, Abwesend bei Inaktivität, Bildschirmschoner oder gesperrtem Bildschirm,
   `tel:`/`callto:`/`sip:`-Links (StarCMX steht auch unter *Einstellungen › Apps › Standard-Apps*).
 
-Unter Windows (noch) nicht: mehrere Anlagen gleichzeitig („Weitere Anlage öffnen“), Play/Pause von
-Bluetooth-Headsets, signierter Installer.
+- **Bluetooth-Headsets**: Im Anruf nimmt ihre Play/Pause-Taste an oder legt auf (StarCMX fängt
+  die Medientasten ab, solange ein Anruf klingelt oder läuft).
+
+Unter Windows (noch) nicht: mehrere Anlagen gleichzeitig („Weitere Anlage öffnen“), signierter
+Installer.
 
 ## Installation
 

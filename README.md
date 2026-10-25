@@ -30,8 +30,11 @@ Busylight, headset buttons), plus on Windows:
 - **Autostart**, away status on inactivity, screen saver or locked screen, `tel:`/`callto:`/`sip:`
   links (StarCMX also appears under *Settings › Apps › Default apps*).
 
-Not (yet) on Windows: several systems at once ("Open another system"), play/pause of Bluetooth
-headsets, code signing of the installer.
+- **Bluetooth headsets**: during a call, their play/pause button answers or hangs up (StarCMX
+  catches the media keys while a call rings or runs).
+
+Not (yet) on Windows: several systems at once ("Open another system"), code signing of the
+installer.
 
 ## Installation
 
