@@ -9,9 +9,14 @@
 //! Medientasten der Tastatur fängt StarCMX während des Anrufs zusätzlich
 //! systemweit ab (`RegisterHotKey`). Ob die Taste zählt, entscheidet wie
 //! unter Linux die Einstellung `play_pause_call` (siehe `super::media_key`).
+//!
+//! Wechselt Windows beim Annehmen auf das Freisprechprofil (HFP), meldet es
+//! von sich aus „Pause“, ohne dass jemand gedrückt hat. Kurz nach jedem
+//! Wechsel des Anrufzustands zählt die Mediensteuerung deshalb nicht.
 
 use std::cell::RefCell;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use sf_headset::Button;
 use tauri::{AppHandle, Manager};
@@ -28,6 +33,38 @@ use windows::core::HSTRING;
 /// Medientasten sind gerade angemeldet
 static ACTIVE: Mutex<bool> = Mutex::new(false);
 
+/// Anrufzustand (Gespräch, klingelt) beim letzten Wechsel, und wann
+static LAST_CHANGE: Mutex<Option<(Calls, Instant)>> = Mutex::new(None);
+
+/// Anrufe mit „klingelt“
+type Calls = Vec<(String, bool)>;
+
+/// So lange nach einem Wechsel zählt die Mediensteuerung nicht
+const QUIET: Duration = Duration::from_millis(1500);
+
+/// Wechsel des Anrufzustands festhalten
+fn note_calls() {
+    let calls: Calls = crate::instances::devices()
+        .lines
+        .iter()
+        .map(|l| (l.id.clone(), l.ringing))
+        .collect();
+    let mut last = LAST_CHANGE.lock().unwrap_or_else(|e| e.into_inner());
+    if last.as_ref().is_none_or(|(c, _)| *c != calls) {
+        *last = Some((calls, Instant::now()));
+    }
+}
+
+/// Liegt der letzte Wechsel des Anrufzustands erst kurz zurück?
+fn just_changed() -> bool {
+    note_calls();
+    LAST_CHANGE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .is_some_and(|(_, at)| at.elapsed() < QUIET)
+}
+
 const KEYS: [(&str, Button); 2] = [
     ("MediaPlayPause", Button::HookToggle),
     ("MediaStop", Button::HookOn),
@@ -40,6 +77,7 @@ thread_local! {
 
 /// Medientasten an- (Anruf) oder abmelden (kein Anruf)
 pub fn set(app: &AppHandle, active: bool) {
+    note_calls();
     let mut current = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
     if *current == active {
         return;
@@ -145,6 +183,13 @@ fn create(app: &AppHandle) -> windows::core::Result<SystemMediaTransportControls
             SystemMediaTransportControlsButton::Stop => Button::HookOn,
             _ => return Ok(()),
         };
+        if just_changed() {
+            tracing::debug!(
+                button = pressed.0,
+                "Mediensteuerung kurz nach Anrufwechsel übergangen"
+            );
+            return Ok(());
+        }
         press(&app, button);
         Ok(())
     }))?;
