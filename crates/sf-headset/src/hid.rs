@@ -5,7 +5,7 @@
 //! gibt es dort nicht roh, hidapi baut ihn aus den Angaben des Treibers
 //! nach. Er wird je Gerätepfad nur einmal gelesen.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -18,6 +18,9 @@ const TELEPHONY_PAGE: u16 = 0x0B;
 
 /// Bereits gelesene Descriptoren je Gerätepfad
 static DESCRIPTORS: Mutex<Option<HashMap<String, Telephony>>> = Mutex::new(None);
+
+/// Schon protokollierte Gerätepfade
+static SEEN: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
 fn io_err(e: hidapi::HidError) -> std::io::Error {
     std::io::Error::other(e.to_string())
@@ -34,21 +37,48 @@ pub fn find() -> Vec<(PathBuf, String, Telephony)> {
     };
     let mut cache = DESCRIPTORS.lock().unwrap();
     let cache = cache.get_or_insert_with(HashMap::new);
+    let mut seen = SEEN.lock().unwrap();
+    let seen = seen.get_or_insert_with(HashSet::new);
     let mut out = Vec::new();
-    for info in api
-        .device_list()
-        .filter(|i| i.usage_page() == TELEPHONY_PAGE)
-    {
+    for info in api.device_list() {
         let path = info.path().to_string_lossy().into_owned();
+        // Zur Diagnose jedes Gerät einmal, auch ohne Telefonietasten
+        let new = seen.insert(path.clone());
+        if new {
+            tracing::debug!(
+                vid = format_args!("{:04x}", info.vendor_id()),
+                pid = format_args!("{:04x}", info.product_id()),
+                page = format_args!("{:#04x}", info.usage_page()),
+                usage = format_args!("{:#04x}", info.usage()),
+                name = info.product_string().unwrap_or(""),
+                %path,
+                "HID-Gerät"
+            );
+        }
+        if info.usage_page() != TELEPHONY_PAGE {
+            continue;
+        }
         let tel = match cache.get(&path) {
             Some(tel) => tel.clone(),
             None => {
-                let Ok(dev) = api.open_path(info.path()) else {
-                    continue;
+                let dev = match api.open_path(info.path()) {
+                    Ok(dev) => dev,
+                    Err(e) => {
+                        if new {
+                            tracing::debug!(error = %e, %path, "Telefonie-Gerät nicht geöffnet");
+                        }
+                        continue;
+                    }
                 };
                 let mut buf = [0u8; 4096];
-                let Ok(n) = dev.get_report_descriptor(&mut buf) else {
-                    continue;
+                let n = match dev.get_report_descriptor(&mut buf) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        if new {
+                            tracing::debug!(error = %e, %path, "Telefonie-Gerät ohne Descriptor");
+                        }
+                        continue;
+                    }
                 };
                 let tel = descriptor::parse(&buf[..n]);
                 cache.insert(path.clone(), tel.clone());
