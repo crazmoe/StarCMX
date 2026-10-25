@@ -18,6 +18,11 @@ updates:
     groups:
       npm:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 erst, wenn @sveltejs/kit und svelte-check es als
+      # Peer-Abhängigkeit zulassen; bis dahin bricht npm ci ab (ERESOLVE).
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
