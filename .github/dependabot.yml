@@ -10,6 +10,12 @@ updates:
     groups:
       cargo:
         update-types: [minor, patch]
+    ignore:
+      # zbus 6 entfernt die blocking-API, auf der die Linux-Teile der
+      # Desktop-App aufbauen; Tauri, notify-rust und secret-service hängen
+      # noch an zbus 5. Der Umstieg braucht eine eigene Portierung.
+      - dependency-name: zbus
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /apps/desktop
