@@ -242,6 +242,84 @@ const BARESIP_PATCHES: &[(&str, &str, &str)] = &[
         "PW_KEY_MEDIA_ROLE, \"Communication\",",
         "PW_KEY_MEDIA_ROLE, str_isset(dev) ? NULL : \"Communication\",",
     ),
+    // Bluetooth-Headsets: Das Mikrofon lässt sich erst öffnen, wenn Windows
+    // auf das Freisprechprofil umgeschaltet hat; bis dahin (bis ~20 s) mit
+    // neu geholtem Standardgerät nochmal versuchen
+    (
+        "modules/wasapi/src.c",
+        r#"	hr = IMMDevice_Activate(capturer, &IID_IAudioClient, CLSCTX_ALL,
+				NULL, (void **)&client);
+	CHECK_HR(hr, "wasapi/src: IMMDevice_Activate failed");
+
+	hr = IAudioClient_GetMixFormat(client, &format);
+	CHECK_HR(hr, "wasapi/src: GetMixFormat failed");
+
+	format->wFormatTag = WAVE_FORMAT_PCM;
+	format->nChannels = st->prm.ch;
+	format->nSamplesPerSec = st->prm.srate;
+	format->wBitsPerSample = (WORD)aufmt_sample_size(st->prm.fmt) * 8;
+	format->nBlockAlign = (format->wBitsPerSample / 8) * format->nChannels;
+	format->nAvgBytesPerSec = format->nSamplesPerSec * format->nBlockAlign;
+	format->cbSize = 0;
+
+	hr = IAudioClient_Initialize(
+		client, AUDCLNT_SHAREMODE_SHARED,
+		AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
+			AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+		(st->prm.ptime * REF_PER_MS * 2), 0, format, NULL);
+	CHECK_HR(hr, "wasapi/src: IAudioClient_Initialize failed");
+"#,
+        r#"	int attempt;
+	for (attempt = 1;; ++attempt) {
+		hr = IMMDevice_Activate(capturer, &IID_IAudioClient, CLSCTX_ALL,
+					NULL, (void **)&client);
+		CHECK_HR(hr, "wasapi/src: IMMDevice_Activate failed");
+
+		hr = IAudioClient_GetMixFormat(client, &format);
+		CHECK_HR(hr, "wasapi/src: GetMixFormat failed");
+
+		format->wFormatTag = WAVE_FORMAT_PCM;
+		format->nChannels = st->prm.ch;
+		format->nSamplesPerSec = st->prm.srate;
+		format->wBitsPerSample = (WORD)aufmt_sample_size(st->prm.fmt) * 8;
+		format->nBlockAlign = (format->wBitsPerSample / 8) * format->nChannels;
+		format->nAvgBytesPerSec = format->nSamplesPerSec * format->nBlockAlign;
+		format->cbSize = 0;
+
+		hr = IAudioClient_Initialize(
+			client, AUDCLNT_SHAREMODE_SHARED,
+			AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
+				AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+			(st->prm.ptime * REF_PER_MS * 2), 0, format, NULL);
+		if (SUCCEEDED(hr) || attempt >= 40 ||
+		    !re_atomic_rlx(&st->run))
+			break;
+
+		/* Bluetooth headsets fail while switching to hands-free */
+		warning("wasapi/src: IAudioClient_Initialize failed: 0x%08x,"
+			" retry %d\n", hr, attempt);
+		CoTaskMemFree(format);
+		format = NULL;
+		IAudioClient_Release(client);
+		client = NULL;
+		sys_msleep(500);
+
+		/* the endpoint may have been replaced meanwhile */
+		if (pl_strcasecmp(st->device, "default") == 0) {
+			IMMDevice_Release(capturer);
+			capturer = NULL;
+			hr = IMMDeviceEnumerator_GetDefaultAudioEndpoint(
+				enumerator, eCapture, eCommunications,
+				&capturer);
+			CHECK_HR(hr, "wasapi/src: GetDefaultAudioEndpoint"
+				 " failed");
+		}
+	}
+	CHECK_HR(hr, "wasapi/src: IAudioClient_Initialize failed");
+	if (attempt > 1)
+		info("wasapi/src: started after %d attempts\n", attempt);
+"#,
+    ),
 ];
 
 fn patch_baresip(src: &Path) {

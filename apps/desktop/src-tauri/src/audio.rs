@@ -36,11 +36,49 @@ fn devices() -> Devices {
 /// wurde: (Karte, vorheriges Profil)
 static BT_SWITCHED: Mutex<Option<(String, String)>> = Mutex::new(None);
 
+/// Geräte (Wiedergabe, Aufnahme) für ein Gespräch, das gerade steht.
+#[cfg(not(windows))]
+pub fn call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
+    bluetooth_call_route(prefs)
+}
+
+/// Windows: Geräte, auf denen das Softphone Gespräche beginnt (Wiedergabe,
+/// Aufnahme; leer heisst Standardgerät für Kommunikation)
+#[cfg(windows)]
+static IN_USE: Mutex<Option<(String, String)>> = Mutex::new(None);
+
+/// Windows: Lautsprecher und Mikrofon nach der Reihenfolge in den
+/// Einstellungen, aus den jetzt vorhandenen Geräten. Ein Headset kann erst
+/// nach dem Start des Softphones verbunden (oder getrennt) worden sein.
+/// Nur wenn das von den Geräten abweicht, auf denen das Gespräch begonnen
+/// hat; diese gelten dann auch für die nächsten Gespräche (siehe
+/// [`IN_USE`]). Leer heisst Standardgerät.
+#[cfg(windows)]
+pub fn call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
+    let present = devices();
+    let want = (
+        sf_audio::pick(&prefs.speakers, &present.speakers).unwrap_or_default(),
+        sf_audio::pick(&prefs.microphones, &present.microphones).unwrap_or_default(),
+    );
+    let mut in_use = IN_USE.lock().unwrap();
+    if in_use.as_ref() == Some(&want) {
+        return None;
+    }
+    tracing::debug!(
+        player = want.0,
+        source = want.1,
+        "Geräte fürs Gespräch umgestellt"
+    );
+    *in_use = Some(want.clone());
+    Some((Some(want.0), Some(want.1)))
+}
+
 /// Ein Gespräch am Softphone steht. Ist das gewählte Gerät ein
 /// Bluetooth-Headset im Musikprofil (ohne Mikrofon), auf Telefonieren
 /// umschalten und Wiedergabe und Mikrofon des Gesprächs dorthin legen.
 /// Liefert (Wiedergabe, Aufnahme) für das Gespräch.
-pub fn bluetooth_call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
+#[cfg(not(windows))]
+fn bluetooth_call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
     let present = devices();
     // „Systemstandard“: das Standardgerät des Audioservers
     let (default_out, default_in) = sf_audio::defaults().unwrap_or_default();
@@ -117,17 +155,27 @@ pub fn bluetooth_call_done() {
 /// in den Einstellungen.
 pub async fn softphone_config(prefs: &Prefs) -> sf_sip::Config {
     let mut config = sf_sip::Config::default();
+    #[cfg(windows)]
+    {
+        *IN_USE.lock().unwrap() = Some(Default::default());
+    }
     if prefs.speakers.is_empty() && prefs.microphones.is_empty() {
         return config;
     }
     let present = tauri::async_runtime::spawn_blocking(devices)
         .await
         .unwrap_or_default();
-    if let Some(dev) = sf_audio::pick(&prefs.speakers, &present.speakers) {
-        config.audio_player = sf_sip::audio_device(sf_sip::AUDIO_DRIVER, &dev);
+    let player = sf_audio::pick(&prefs.speakers, &present.speakers);
+    let source = sf_audio::pick(&prefs.microphones, &present.microphones);
+    if let Some(dev) = &player {
+        config.audio_player = sf_sip::audio_device(sf_sip::AUDIO_DRIVER, dev);
     }
-    if let Some(dev) = sf_audio::pick(&prefs.microphones, &present.microphones) {
-        config.audio_source = sf_sip::audio_device(sf_sip::AUDIO_DRIVER, &dev);
+    if let Some(dev) = &source {
+        config.audio_source = sf_sip::audio_device(sf_sip::AUDIO_DRIVER, dev);
+    }
+    #[cfg(windows)]
+    {
+        *IN_USE.lock().unwrap() = Some((player.unwrap_or_default(), source.unwrap_or_default()));
     }
     config
 }

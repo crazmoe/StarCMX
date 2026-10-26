@@ -1,8 +1,8 @@
-//! Bluetooth-Kopfhörer und -Headsets unter Windows: Ihre Taste schickt (über
-//! AVRCP) Play/Pause, das Windows als Medientaste weitergibt. Solange ein
-//! Anruf klingelt oder läuft, fängt StarCMX die Medientasten systemweit ab
-//! (`RegisterHotKey`); die Taste nimmt dann an oder legt auf. Ohne Anruf
-//! bleibt sie beim Musikspieler. Ob die Taste zählt, entscheidet wie unter
+//! Medientasten der Tastatur unter Windows: Solange ein Anruf klingelt oder
+//! läuft, fängt StarCMX sie systemweit ab (`RegisterHotKey`); Play/Pause
+//! nimmt dann an oder legt auf. Ohne Anruf bleiben sie beim Musikspieler.
+//! Bluetooth-Headsets erreichen StarCMX so nicht: Windows behält ihre Taste
+//! im Gespräch für sich. Ob die Taste zählt, entscheidet wie unter
 //! Linux die Einstellung `play_pause_call` (siehe `super::media_key`).
 
 use std::sync::Mutex;

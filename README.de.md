@@ -26,14 +26,16 @@ Busylight, Headset-Tasten), dazu unter Windows:
 - **Codecs**: G.722 (Breitband), G.711, mit SRTP.
 - **Anmeldung** im eigenen Fenster (WebView2); in StarCMX bestätigte selbstsignierte Zertifikate
   gelten auch dort. Die Sitzung liegt in der Windows-Anmeldeinformationsverwaltung.
-- **Headset-Tasten** von Jabra, Poly und EPOS (USB-HID-Telefonie) und **Kuando Busylight**.
+- **Headset-Tasten** über USB-HID-Telefonie und **Kuando Busylight**. Unter Windows mit Jabra
+  getestet; Poly, Yealink und EPOS nutzen denselben Standard, sind aber ungetestet.
 - **Tastenkürzel** systemweit (markierte Nummer wählen, aus der Zwischenablage wählen, annehmen,
   auflegen, Ansicht umschalten).
 - **Autostart**, Abwesend bei Inaktivität, Bildschirmschoner oder gesperrtem Bildschirm,
   `tel:`/`callto:`/`sip:`-Links (StarCMX steht auch unter *Einstellungen › Apps › Standard-Apps*).
 
-- **Bluetooth-Headsets**: Im Anruf nimmt ihre Play/Pause-Taste an oder legt auf (StarCMX fängt
-  die Medientasten ab, solange ein Anruf klingelt oder läuft).
+- **Medientasten** der Tastatur: Im Anruf nimmt Play/Pause an oder legt auf (StarCMX fängt sie
+  ab, solange ein Anruf klingelt oder läuft). Tasten von Bluetooth-Headsets werden unter Windows
+  nicht unterstützt.
 
 - **Mehrere Anlagen gleichzeitig** („Weitere Anlage öffnen“ im Tray) wie unter Linux: je Anlage ein
   StarCMX, abgestimmt über Named Pipes.
