@@ -89,7 +89,7 @@ jobs:
 
       # Release: der erste Build auf main mit einer neuen Version in Cargo.toml
       # (oder ein Tag v1.2.3 mit genau dieser Version). Alle anderen Builds
-      # hängen die Laufnummer an (1.0.0+123).
+      # hängen die Laufnummer an (1.0.1+123).
       - name: Version setzen
         id: version
         env:
