@@ -48,6 +48,9 @@ Unter [Releases](../../releases) gibt es den Installer `StarCMX_<version>_x64-se
 Benutzer, ohne Administratorrechte). Entwicklungsstände liegen als Artefakt
 `starcmx-<version>-windows-x64` unter **Actions**.
 
+Mit winget (sobald der Eintrag aufgenommen ist, siehe [`packaging/winget`](packaging/winget)):
+`winget install crazmoe.StarCMX`.
+
 Der Installer ist noch nicht signiert; SmartScreen fragt deshalb einmal nach („Weitere
 Informationen“ › „Trotzdem ausführen“). WebView2 gehört zu Windows 10/11; fehlt es, lädt der
 Installer es nach.
