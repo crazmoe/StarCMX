@@ -162,8 +162,9 @@ jobs:
   # Neues Release an winget melden: öffnet über den Fork crazmoe/winget-pkgs
   # einen PR bei microsoft/winget-pkgs. Braucht das Secret WINGET_TOKEN
   # (classic Token mit public_repo) und den ersten, von Hand eingereichten
-  # Eintrag crazmoe.StarCMX (packaging/winget). Fehlt das Secret, wird der
-  # Schritt übersprungen; ein Fehler hier macht das Release nicht rot.
+  # Eintrag crazmoe.StarCMX (packaging/winget). Fehlt das Secret oder ist der
+  # Eintrag noch nicht in winget-pkgs aufgenommen, wird der Schritt
+  # übersprungen; ein Fehler hier macht das Release nicht rot.
   winget:
     needs: [windows, release]
     runs-on: ubuntu-24.04
@@ -174,8 +175,21 @@ jobs:
       - name: Kein WINGET_TOKEN
         if: env.WINGET_TOKEN == ''
         run: echo "::notice::Secret WINGET_TOKEN fehlt, winget wird nicht aktualisiert"
-      - name: winget-pkgs aktualisieren
+      # Solange der Ersteintrag nur als PR offen ist, findet winget-releaser
+      # keine Vorlage und schlägt fehl
+      - name: Ersteintrag in winget-pkgs vorhanden?
+        id: known
         if: env.WINGET_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api repos/microsoft/winget-pkgs/contents/manifests/c/crazmoe/StarCMX --silent; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::crazmoe.StarCMX ist noch nicht in winget-pkgs aufgenommen, winget wird nicht aktualisiert"
+          fi
+      - name: winget-pkgs aktualisieren
+        if: steps.known.outputs.ok == 'true'
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: crazmoe.StarCMX

@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.0.2 – 2026-10-27
+
+### Rufliste
+- Neuer Schalter „Eigene“: blendet Gruppenanrufe aus, die verpasst oder von jemand anderem
+  angenommen wurden. Er lässt sich mit den Filtern kombinieren, etwa „Eigene“ + „Verpasst“, und
+  bleibt nach dem Neustart eingestellt
+- Neuer Filter „Angenommen“ für angenommene eingehende Anrufe
+
 ## 1.0.1 – 2026-10-26
 
 ### Adressbuch

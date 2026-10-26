@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "StarCMX",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "identifier": "ch.crazmoe.starcmx",
   "build": {
     "beforeDevCommand": "npm run dev",
