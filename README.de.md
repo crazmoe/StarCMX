@@ -10,7 +10,7 @@ STARFACE 10 und neuer.
 Kein Angebot der STARFACE GmbH. „STARFACE“ wird nur beschreibend verwendet. StarCMX ist nicht die
 offizielle STARFACE App für Windows und ersetzt sie nicht.
 
-> **Stand:** frühe Testversion. Audio, Headsets und Busylight sind gegen die Windows-APIs
+> **Stand:** Version 1.0. Audio, Headsets und Busylight sind gegen die Windows-APIs
 > geschrieben, aber nur von Hand an echter Hardware getestet. Rückmeldungen, was geht und was
 > nicht, sind willkommen.
 

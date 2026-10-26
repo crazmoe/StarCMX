@@ -9,7 +9,7 @@ interfaces (OneHub gRPC, SIP/TLS with SRTP, XMPP chat), STARFACE 10 and later.
 Not affiliated with STARFACE GmbH. "STARFACE" is used for descriptive purposes only. StarCMX is
 not the official STARFACE App for Windows and does not replace it.
 
-> **Status:** early test version. Audio, headsets and Busylight are written against the Windows
+> **Status:** version 1.0. Audio, headsets and Busylight are written against the Windows
 > APIs, but are only tested on real hardware by hand. Please report what works and what doesn't.
 
 ## Features
