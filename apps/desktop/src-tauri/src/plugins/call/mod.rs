@@ -230,12 +230,11 @@ async fn start_phone(app: AppHandle, hub: sf_onehub::OneHub, host: String) {
                 let app = app.clone();
                 tauri::async_runtime::spawn(async move {
                     let prefs = settings::load(&app).prefs;
-                    let route = tauri::async_runtime::spawn_blocking(move || {
-                        audio::bluetooth_call_route(&prefs)
-                    })
-                    .await
-                    .ok()
-                    .flatten();
+                    let route =
+                        tauri::async_runtime::spawn_blocking(move || audio::call_route(&prefs))
+                            .await
+                            .ok()
+                            .flatten();
                     if let Some((player, source)) = route
                         && (player.is_some() || source.is_some())
                     {

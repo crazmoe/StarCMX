@@ -36,11 +36,31 @@ fn devices() -> Devices {
 /// wurde: (Karte, vorheriges Profil)
 static BT_SWITCHED: Mutex<Option<(String, String)>> = Mutex::new(None);
 
+/// Geräte (Wiedergabe, Aufnahme) für ein Gespräch, das gerade steht.
+#[cfg(not(windows))]
+pub fn call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
+    bluetooth_call_route(prefs)
+}
+
+/// Windows: Lautsprecher und Mikrofon nach der Reihenfolge in den
+/// Einstellungen, aus den jetzt vorhandenen Geräten. Ein Headset kann erst
+/// nach dem Start des Softphones verbunden worden sein; ohne Wahl bleibt es
+/// beim Standardgerät für Kommunikation.
+#[cfg(windows)]
+pub fn call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
+    let present = devices();
+    let player = sf_audio::pick(&prefs.speakers, &present.speakers);
+    let source = sf_audio::pick(&prefs.microphones, &present.microphones);
+    tracing::debug!(?player, ?source, "Geräte fürs Gespräch");
+    (player.is_some() || source.is_some()).then_some((player, source))
+}
+
 /// Ein Gespräch am Softphone steht. Ist das gewählte Gerät ein
 /// Bluetooth-Headset im Musikprofil (ohne Mikrofon), auf Telefonieren
 /// umschalten und Wiedergabe und Mikrofon des Gesprächs dorthin legen.
 /// Liefert (Wiedergabe, Aufnahme) für das Gespräch.
-pub fn bluetooth_call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
+#[cfg(not(windows))]
+fn bluetooth_call_route(prefs: &Prefs) -> Option<(Option<String>, Option<String>)> {
     let present = devices();
     // „Systemstandard“: das Standardgerät des Audioservers
     let (default_out, default_in) = sf_audio::defaults().unwrap_or_default();
