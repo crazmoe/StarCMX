@@ -24,7 +24,8 @@ Busylight, headset buttons), plus on Windows:
 - **Codecs**: G.722 (wideband), G.711, with SRTP.
 - **Sign-in** in a window of its own (WebView2); self-signed certificates confirmed in StarCMX
   are accepted there, too. The session is stored in the Windows Credential Manager.
-- **Headset buttons** for Jabra, Poly and EPOS (USB HID telephony) and **Kuando Busylight**.
+- **Headset buttons** over USB HID telephony and **Kuando Busylight**. Tested on Windows with
+  Jabra; Poly, Yealink and EPOS use the same standard but are untested.
 - **Keyboard shortcuts** system-wide (dial selected number, dial from clipboard, answer,
   hang up, toggle view).
 - **Autostart**, away status on inactivity, screen saver or locked screen, `tel:`/`callto:`/`sip:`

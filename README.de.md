@@ -26,7 +26,8 @@ Busylight, Headset-Tasten), dazu unter Windows:
 - **Codecs**: G.722 (Breitband), G.711, mit SRTP.
 - **Anmeldung** im eigenen Fenster (WebView2); in StarCMX bestätigte selbstsignierte Zertifikate
   gelten auch dort. Die Sitzung liegt in der Windows-Anmeldeinformationsverwaltung.
-- **Headset-Tasten** von Jabra, Poly und EPOS (USB-HID-Telefonie) und **Kuando Busylight**.
+- **Headset-Tasten** über USB-HID-Telefonie und **Kuando Busylight**. Unter Windows mit Jabra
+  getestet; Poly, Yealink und EPOS nutzen denselben Standard, sind aber ungetestet.
 - **Tastenkürzel** systemweit (markierte Nummer wählen, aus der Zwischenablage wählen, annehmen,
   auflegen, Ansicht umschalten).
 - **Autostart**, Abwesend bei Inaktivität, Bildschirmschoner oder gesperrtem Bildschirm,
