@@ -158,3 +158,27 @@ jobs:
           gh release create "v$VERSION" --latest --target "$GITHUB_SHA" --title "StarCMX $VERSION" --notes-file notes.md \
             dl/bundle/nsis/*.exe \
             "sfctl-${VERSION}-windows-x64.exe"
+
+  # Neues Release an winget melden: öffnet über den Fork crazmoe/winget-pkgs
+  # einen PR bei microsoft/winget-pkgs. Braucht das Secret WINGET_TOKEN
+  # (classic Token mit public_repo) und den ersten, von Hand eingereichten
+  # Eintrag crazmoe.StarCMX (packaging/winget). Fehlt das Secret, wird der
+  # Schritt übersprungen; ein Fehler hier macht das Release nicht rot.
+  winget:
+    needs: [windows, release]
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Kein WINGET_TOKEN
+        if: env.WINGET_TOKEN == ''
+        run: echo "::notice::Secret WINGET_TOKEN fehlt, winget wird nicht aktualisiert"
+      - name: winget-pkgs aktualisieren
+        if: env.WINGET_TOKEN != ''
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: crazmoe.StarCMX
+          installers-regex: '_x64-setup\.exe$'
+          release-tag: v${{ needs.windows.outputs.version }}
+          token: ${{ env.WINGET_TOKEN }}
