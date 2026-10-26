@@ -1,6 +1,20 @@
 # Änderungen
 
-## Unveröffentlicht
+## 1.0.0 – 2026-10-26
+
+Erste stabile Version für Windows.
+
+### Ton und Headsets
+- Bluetooth-Headsets (HFP): Windows meldet das Mikrofon beim Umschalten auf den Gesprächsmodus
+  oft kurz als nicht bereit. StarCMX versucht es jetzt bis zu 20 Sekunden lang erneut, statt
+  das Gespräch ohne Mikrofon zu führen.
+- Die in StarCMX gewählten Geräte gelten bei jedem Gespräch neu, auch wenn das Headset erst nach
+  dem Start verbunden wurde, und unabhängig vom Windows-Standardgerät. Neue Gespräche beginnen
+  gleich auf diesen Geräten.
+- Headset-Tasten über HID: mit Jabra getestet; Poly, Yealink und EPOS nutzen denselben Standard,
+  sind aber ungetestet. Tasten von Bluetooth-Headsets ohne HID (z. B. JBL) werden unter Windows
+  nicht unterstützt; Medientasten der Tastatur gehen weiter.
+- Meldungen von baresip stehen im Protokoll.
 
 ### Zwei Clients am selben Konto
 Liefen StarCMX und StarCLX gleichzeitig am selben Konto, nahm Annehmen an einem Client den Anruf
