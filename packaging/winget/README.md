@@ -43,7 +43,9 @@ Voraussetzungen:
 - Repo-Secret `WINGET_TOKEN`: ein *classic* Personal Access Token mit dem Recht `public_repo`
   (Settings › Developer settings › Personal access tokens › Tokens (classic)).
 
-Ohne Secret überspringt die CI den Schritt. Die Manifeste hier müssen dafür nicht nachgeführt
+Ohne Secret, oder solange `crazmoe.StarCMX` in winget-pkgs noch nicht aufgenommen ist, überspringt
+die CI den Schritt. Ein Release aus dieser Zeit lässt sich nach der Aufnahme nachmelden, indem man
+den Job `winget` seines Laufs neu startet. Die Manifeste hier müssen dafür nicht nachgeführt
 werden; sie dienen nur der ersten Einreichung.
 
 ## Hinweise
