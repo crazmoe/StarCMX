@@ -474,6 +474,14 @@ impl Phone {
         Ok(false)
     }
 
+    /// Geräte, auf denen die nächsten Gespräche beginnen; `None` lässt die
+    /// Seite, wie sie ist, leer heisst Standardgerät.
+    pub fn set_default_audio(&self, player: Option<&str>, source: Option<&str>) -> PhoneResult<()> {
+        self.sip()?
+            .set_default_audio(sf_sip::AUDIO_DRIVER, player, source)?;
+        Ok(())
+    }
+
     /// Lenkt Wiedergabe und Aufnahme eines laufenden SIP-Anrufs auf andere
     /// Geräte (PipeWire-Knotennamen); `None` lässt die Seite, wie sie ist.
     pub fn set_call_audio(

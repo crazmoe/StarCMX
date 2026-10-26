@@ -32,6 +32,7 @@ mod ffi {
     pub const OP_AUSRC: c_int = 10;
     pub const OP_HEADER: c_int = 11;
     pub const OP_AUPLAY: c_int = 12;
+    pub const OP_AUDEFAULT: c_int = 13;
 
     pub const EV_READY: c_int = 1;
     pub const EV_ERROR: c_int = 2;
@@ -544,6 +545,21 @@ impl Softphone {
             Some(call_id),
             Some(&audio_device(module, device)),
         )
+    }
+
+    /// Geräte für Gespräche, die danach beginnen (`None`: unverändert)
+    pub fn set_default_audio(
+        &self,
+        module: &str,
+        player: Option<&str>,
+        source: Option<&str>,
+    ) -> Result<()> {
+        if module.contains(',') {
+            return Err(Error::InvalidValue("module".into()));
+        }
+        let player = player.map(|d| audio_device(module, d));
+        let source = source.map(|d| audio_device(module, d));
+        self.cmd(ffi::OP_AUDEFAULT, player.as_deref(), source.as_deref())
     }
 
     /// Baut nach Standby oder Netzwechsel die SIP-Verbindungen neu auf und

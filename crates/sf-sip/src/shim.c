@@ -40,6 +40,7 @@ enum sfsip_op {
 	SFSIP_OP_AUSRC,
 	SFSIP_OP_HEADER,
 	SFSIP_OP_AUPLAY,
+	SFSIP_OP_AUDEFAULT,
 };
 
 /* Stabile Ereigniscodes für Rust (unabhängig von enum bevent_ev) */
@@ -330,6 +331,21 @@ static struct ua *find_ua_for_call(const char *id, bool incoming_only,
 	return NULL;
 }
 
+/* "modul,gerät" in die Standardeinstellung kopieren */
+static void set_default(char *v, char *mod, size_t mod_sz, char *dev,
+			size_t dev_sz)
+{
+	char *d;
+
+	if (!v)
+		return;
+	d = strchr(v, ',');
+	if (d)
+		*d++ = '\0';
+	str_ncpy(mod, v, mod_sz);
+	str_ncpy(dev, d ? d : "", dev_sz);
+}
+
 static void mqueue_handler(int id, void *data, void *arg)
 {
 	struct sfcmd *c = data;
@@ -400,6 +416,19 @@ static void mqueue_handler(int id, void *data, void *arg)
 				*dev++ = '\0';
 			err = audio_set_player(call_audio(call), c->b, dev);
 		}
+		break;
+
+	case SFSIP_OP_AUDEFAULT:
+		/* a: Wiedergabe, b: Aufnahme, je "modul,gerät" oder NULL; gilt
+		 * für Gespräche, die danach beginnen */
+		set_default(c->a, conf_config()->audio.play_mod,
+			    sizeof(conf_config()->audio.play_mod),
+			    conf_config()->audio.play_dev,
+			    sizeof(conf_config()->audio.play_dev));
+		set_default(c->b, conf_config()->audio.src_mod,
+			    sizeof(conf_config()->audio.src_mod),
+			    conf_config()->audio.src_dev,
+			    sizeof(conf_config()->audio.src_dev));
 		break;
 
 	case SFSIP_OP_HEADER:

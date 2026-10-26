@@ -240,7 +240,11 @@ async fn start_phone(app: AppHandle, hub: sf_onehub::OneHub, host: String) {
                     {
                         let state = app.state::<CallState>();
                         let result = with_phone(&state, async |p| {
-                            p.set_call_audio(&sip_call_id, player.as_deref(), source.as_deref())
+                            p.set_call_audio(&sip_call_id, player.as_deref(), source.as_deref())?;
+                            if cfg!(windows) {
+                                p.set_default_audio(player.as_deref(), source.as_deref())?;
+                            }
+                            Ok(())
                         })
                         .await;
                         if let Err(e) = result {
