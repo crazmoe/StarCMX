@@ -243,7 +243,8 @@ const BARESIP_PATCHES: &[(&str, &str, &str)] = &[
         "PW_KEY_MEDIA_ROLE, str_isset(dev) ? NULL : \"Communication\",",
     ),
     // Bluetooth-Headsets: Das Mikrofon lässt sich erst öffnen, wenn Windows
-    // auf das Freisprechprofil umgeschaltet hat; bis dahin nochmal versuchen
+    // auf das Freisprechprofil umgeschaltet hat; bis dahin (bis ~20 s) mit
+    // neu geholtem Standardgerät nochmal versuchen
     (
         "modules/wasapi/src.c",
         r#"	hr = IMMDevice_Activate(capturer, &IID_IAudioClient, CLSCTX_ALL,
@@ -268,7 +269,8 @@ const BARESIP_PATCHES: &[(&str, &str, &str)] = &[
 		(st->prm.ptime * REF_PER_MS * 2), 0, format, NULL);
 	CHECK_HR(hr, "wasapi/src: IAudioClient_Initialize failed");
 "#,
-        r#"	for (int attempt = 1;; ++attempt) {
+        r#"	int attempt;
+	for (attempt = 1;; ++attempt) {
 		hr = IMMDevice_Activate(capturer, &IID_IAudioClient, CLSCTX_ALL,
 					NULL, (void **)&client);
 		CHECK_HR(hr, "wasapi/src: IMMDevice_Activate failed");
@@ -289,7 +291,7 @@ const BARESIP_PATCHES: &[(&str, &str, &str)] = &[
 			AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
 				AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
 			(st->prm.ptime * REF_PER_MS * 2), 0, format, NULL);
-		if (SUCCEEDED(hr) || attempt >= 10 ||
+		if (SUCCEEDED(hr) || attempt >= 40 ||
 		    !re_atomic_rlx(&st->run))
 			break;
 
@@ -300,9 +302,22 @@ const BARESIP_PATCHES: &[(&str, &str, &str)] = &[
 		format = NULL;
 		IAudioClient_Release(client);
 		client = NULL;
-		sys_msleep(300);
+		sys_msleep(500);
+
+		/* the endpoint may have been replaced meanwhile */
+		if (pl_strcasecmp(st->device, "default") == 0) {
+			IMMDevice_Release(capturer);
+			capturer = NULL;
+			hr = IMMDeviceEnumerator_GetDefaultAudioEndpoint(
+				enumerator, eCapture, eCommunications,
+				&capturer);
+			CHECK_HR(hr, "wasapi/src: GetDefaultAudioEndpoint"
+				 " failed");
+		}
 	}
 	CHECK_HR(hr, "wasapi/src: IAudioClient_Initialize failed");
+	if (attempt > 1)
+		info("wasapi/src: started after %d attempts\n", attempt);
 "#,
     ),
 ];
