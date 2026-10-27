@@ -15,7 +15,7 @@ pub use pulse::{MicMeter, Playback, bluetooth_cards, defaults, list, set_card_pr
 #[cfg(windows)]
 mod wasapi;
 #[cfg(windows)]
-pub use wasapi::{MicMeter, Playback, bluetooth_cards, defaults, list, set_card_profile};
+pub use wasapi::{MicMeter, Playback, bluetooth_cards, defaults, list, names, set_card_profile};
 
 use std::time::Duration;
 

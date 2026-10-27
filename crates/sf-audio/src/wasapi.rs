@@ -6,6 +6,7 @@
 //! (wie bei baresip), bei Klingelton und Testton das normale
 //! Standardgerät.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
@@ -106,6 +107,23 @@ pub fn list() -> Result<Devices, Error> {
         speakers: devices(&e, eRender).map_err(|e| err(&e))?,
         microphones: devices(&e, eCapture).map_err(|e| err(&e))?,
     })
+}
+
+/// Namen zu gespeicherten Endpunkt-IDs, auch für Geräte, die gerade
+/// fehlen oder deaktiviert sind: Windows behält sie im Gerätespeicher.
+/// Was Windows nicht (mehr) kennt, fehlt in der Antwort.
+pub fn names(ids: &[String]) -> HashMap<String, String> {
+    let _com = Com::init();
+    let Ok(e) = enumerator() else {
+        return HashMap::new();
+    };
+    ids.iter()
+        .filter_map(|id| {
+            let device = unsafe { e.GetDevice(&HSTRING::from(id.as_str())) }.ok()?;
+            let name = friendly_name(&device);
+            (!name.is_empty()).then(|| (id.clone(), name))
+        })
+        .collect()
 }
 
 /// Aktuelle Standardgeräte für Kommunikation: (Lautsprecher, Mikrofon)

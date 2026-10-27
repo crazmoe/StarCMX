@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.0.3 – 2026-10-27
+
+### Audio
+- Gespeicherte Geräte, die gerade nicht verbunden sind, zeigen in den Audio-Einstellungen ihren
+  Namen statt der Windows-Geräte-ID (`{0.0.0.00000000}.{…}`). Den Namen liefert Windows, auch
+  für ausgesteckte oder deaktivierte Geräte; sonst gilt der zuletzt gesehene
+
 ## 1.0.2 – 2026-10-27
 
 ### Rufliste

@@ -293,6 +293,7 @@ const dict: Record<string, string> = {
   "Bluetooth-Headsets klingeln nicht selbst, sondern über den Klingelton. Unter „Klingeltöne“ lassen sie sich als Klingelgerät wählen und testen.": "Le cuffie Bluetooth non squillano da sole ma riproducono la suoneria. In «Suonerie» puoi sceglierle e provarle come dispositivo di squillo.",
   "Bluetooth-Gerät": "Dispositivo Bluetooth",
   "USB-Gerät": "Dispositivo USB",
+  "Unbekanntes Audiogerät": "Dispositivo audio sconosciuto",
   "Headset-Tasten": "Tasti delle cuffie",
   "Tasten am Headset verwenden (Jabra, Poly, EPOS, Bluetooth)": "Usa i tasti delle cuffie (Jabra, Poly, EPOS, Bluetooth)",
   "Telefonietasten, Klingeln und LEDs gehen nur über USB: per Kabel oder mit dem Dongle des Herstellers (z. B. Jabra Link). Direkt per Bluetooth verbundene Headsets: Nur die Play/Pause-Taste nimmt an und legt auf, und auch das nur, wenn das Headset sie sendet.": "Tasti di chiamata, squillo e LED funzionano solo via USB: con il cavo o con il dongle del produttore (ad es. Jabra Link). Cuffie collegate direttamente via Bluetooth: solo il tasto play/pausa risponde e riaggancia, e solo se la cuffia lo invia.",
