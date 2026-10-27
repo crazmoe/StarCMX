@@ -108,6 +108,8 @@ mod imp {
         let width = (WIDTH * mon.scale_factor()).round() as u32;
         let width = if open { width } else { STRIP };
         let _ = w.set_decorations(false);
+        // Ohne Schatten und runde Ecken liegt die Leiste bündig am Rand.
+        let _ = w.set_shadow(false);
         let _ = w.set_skip_taskbar(true);
         let _ = w.set_always_on_top(true);
         let _ = w.set_resizable(false);
@@ -143,9 +145,15 @@ mod imp {
             rc = appbar(hwnd, ab_edge, rc, ABM_SETPOS);
         } else {
             remove_appbar(hwnd);
+            // Waagrecht vom Bildschirmrand aus: Der Arbeitsbereich enthält
+            // den eben freigegebenen AppBar-Platz unter Umständen noch.
+            let m = mon.position();
+            let s = mon.size();
             if left {
-                rc.right = rc.left + width as i32;
+                rc.left = m.x;
+                rc.right = m.x + width as i32;
             } else {
+                rc.right = m.x + s.width as i32;
                 rc.left = rc.right - width as i32;
             }
         }
@@ -167,6 +175,7 @@ mod imp {
         let _ = w.set_always_on_top(false);
         let _ = w.set_skip_taskbar(false);
         let _ = w.set_decorations(true);
+        let _ = w.set_shadow(true);
         let _ = w.set_resizable(true);
         let _ = w.set_min_size(Some(tauri::LogicalSize::new(260.0, 240.0)));
         let _ = w.set_size(tauri::LogicalSize::new(340.0, 480.0));
