@@ -8,6 +8,8 @@
   Fenster machen ihr Platz wie bei der Taskleiste
 - Wahlweise **einfahren**: Nur ein schmaler Streifen bleibt am Rand; berührt die Maus ihn, fährt
   die Leiste aus und danach wieder ein
+- Angedockt fehlt „Schnellwahl“ im Menü des Infobereichs
+- Doppelklick auf das Symbol im Infobereich öffnet das Programmfenster; das Menü kommt mit rechts
 
 ## 1.3.0 – 2026-10-27
 

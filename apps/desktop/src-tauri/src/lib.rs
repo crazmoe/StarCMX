@@ -39,7 +39,7 @@ use serde::Serialize;
 use settings::Prefs;
 use sf_core::{Session, SessionEvent};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_opener::OpenerExt;
@@ -326,6 +326,9 @@ async fn save_prefs(
     plugins::nextcloud::apply_prefs(&app, &prefs);
     bus::publish(&app, Event::PrefsSaved);
     desktop::apply_window(&app, &prefs);
+    if old.quick_dock != prefs.quick_dock {
+        relabel(&app, state.session.lock().await.as_ref());
+    }
     // Links, Autostart und Tastenkürzel gehören dem Hauptclient
     if !instances::is_main() {
         return plugins::call::apply_prefs(&app, &old, &prefs).await;
@@ -705,7 +708,11 @@ fn tray_menu(app: &AppHandle, session: Option<&Session>) -> tauri::Result<Menu<t
         .filter(|(_, a)| server_allowed(&a.server))
         .collect();
     type Item<'a> = &'a dyn tauri::menu::IsMenuItem<tauri::Wry>;
-    let mut top: Vec<Item> = vec![&header, &separator, &open, &quick];
+    let mut top: Vec<Item> = vec![&header, &separator, &open];
+    // Angedockt steht die Schnellwahl ohnehin am Bildschirmrand.
+    if !dock::docked() {
+        top.push(&quick);
+    }
     // Unter Windows gibt es (noch) nur eine Instanz
     if instances::MULTI {
         top.push(&another);
@@ -780,6 +787,17 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let mut tray = TrayIconBuilder::with_id(instances::tray_id())
         .tooltip(t("StarCMX: abgemeldet"))
         .menu(&menu)
+        // Menü mit rechts, Doppelklick links öffnet das Hauptfenster
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        })
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main_window(app),
             "quick" => show_quick_window(app),
