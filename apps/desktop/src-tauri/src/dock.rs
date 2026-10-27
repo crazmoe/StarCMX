@@ -60,11 +60,13 @@ pub fn quick_dock_expand(app: AppHandle, open: bool) {
 mod imp {
     use std::sync::atomic::{AtomicBool, Ordering};
     use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
-    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::Win32::Foundation::{HWND, POINT, RECT};
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
     use windows::Win32::UI::Shell::{
         ABE_LEFT, ABE_RIGHT, ABM_NEW, ABM_QUERYPOS, ABM_REMOVE, ABM_SETPOS, APPBARDATA,
         SHAppBarMessage,
     };
+    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 
     /// Breite der ausgefahrenen Leiste (logische Pixel)
     const WIDTH: f64 = 300.0;
@@ -73,6 +75,62 @@ mod imp {
 
     /// Fenster ist als AppBar angemeldet
     static APPBAR: AtomicBool = AtomicBool::new(false);
+    /// Lage der Leiste zuletzt (links, oben, rechts, unten) und ob ausgefahren
+    static LAST: std::sync::Mutex<(RECT, bool)> = std::sync::Mutex::new((
+        RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        },
+        false,
+    ));
+    static WATCHING: AtomicBool = AtomicBool::new(false);
+
+    /// Mausposition am Rand selbst prüfen: Die Webansicht im schmalen
+    /// Streifen meldet das Überfahren nicht zuverlässig.
+    fn watch(app: &AppHandle) {
+        if WATCHING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let mut outside_since: Option<std::time::Instant> = None;
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(120));
+                let (edge, autohide) = super::STATE.lock().unwrap().clone();
+                if edge.is_empty() || !autohide {
+                    outside_since = None;
+                    continue;
+                }
+                let mut pt = POINT::default();
+                if unsafe { GetCursorPos(&mut pt) }.is_err() {
+                    continue;
+                }
+                let (rc, open) = *LAST.lock().unwrap();
+                let inside =
+                    pt.x >= rc.left && pt.x < rc.right && pt.y >= rc.top && pt.y < rc.bottom;
+                if !open {
+                    if inside {
+                        dock(&app, &edge, true, true);
+                    }
+                    continue;
+                }
+                // Nicht einfahren, solange die Maustaste gedrückt ist (Gespräch ziehen)
+                let pressed = unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) } as u16 & 0x8000 != 0;
+                if inside || pressed {
+                    outside_since = None;
+                } else if outside_since
+                    .get_or_insert_with(std::time::Instant::now)
+                    .elapsed()
+                    > std::time::Duration::from_millis(700)
+                {
+                    outside_since = None;
+                    dock(&app, &edge, true, false);
+                }
+            }
+        });
+    }
 
     fn appbar(hwnd: HWND, edge: u32, rc: RECT, msg: u32) -> RECT {
         let mut abd = APPBARDATA {
@@ -162,6 +220,10 @@ mod imp {
             (rc.bottom - rc.top) as u32,
         ));
         let _ = w.set_position(PhysicalPosition::new(rc.left, rc.top));
+        *LAST.lock().unwrap() = (rc, open);
+        if autohide {
+            watch(app);
+        }
         let _ = w.show();
     }
 
