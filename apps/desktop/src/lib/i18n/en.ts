@@ -661,5 +661,10 @@ const dict: Record<string, string> = {
   "In Nextcloud teilen": "Share via Nextcloud",
   "Aufzeichnung teilen": "Share recording",
   "Adresse": "Address",
+  "Schnellwahl am Bildschirmrand": "Speed dial at screen edge",
+  "Nicht angedockt": "Not docked",
+  "Links": "Left",
+  "Rechts": "Right",
+  "Einfahren und erst bei Mausberührung am Rand zeigen": "Hide and show only when the mouse touches the edge",
 };
 export default dict;
