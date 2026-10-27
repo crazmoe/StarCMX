@@ -5,6 +5,8 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  # Von Hand starten, falls ein Push auf main keinen Lauf ausgelöst hat
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -104,7 +106,7 @@ jobs:
               exit 1
             fi
             RELEASE=1
-          elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ] \
+          elif [[ "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ]] && [ "$GITHUB_REF" = refs/heads/main ] \
               && ! gh release view "v$BASE" >/dev/null 2>&1; then
             VERSION="$BASE"
             RELEASE=1
