@@ -62,8 +62,8 @@ mod imp {
     use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
     use windows::Win32::Foundation::{HWND, RECT};
     use windows::Win32::UI::Shell::{
-        SHAppBarMessage, ABE_LEFT, ABE_RIGHT, ABM_NEW, ABM_QUERYPOS, ABM_REMOVE, ABM_SETPOS,
-        APPBARDATA,
+        ABE_LEFT, ABE_RIGHT, ABM_NEW, ABM_QUERYPOS, ABM_REMOVE, ABM_SETPOS, APPBARDATA,
+        SHAppBarMessage,
     };
 
     /// Breite der ausgefahrenen Leiste (logische Pixel)
