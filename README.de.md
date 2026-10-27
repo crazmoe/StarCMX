@@ -37,6 +37,7 @@ Busylight, Headset-Tasten), dazu unter Windows:
   ab, solange ein Anruf klingelt oder läuft). Tasten von Bluetooth-Headsets werden unter Windows
   nicht unterstützt.
 
+- **Nextcloud**: Kontakte aus Nextcloud-Adressbüchern (lesen und schreiben, Anrufernamen), Aufzeichnungen und Anrufnotizen per Link teilen
 - **Mehrere Anlagen gleichzeitig** („Weitere Anlage öffnen“ im Tray) wie unter Linux: je Anlage ein
   StarCMX, abgestimmt über Named Pipes.
 

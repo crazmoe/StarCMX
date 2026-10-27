@@ -34,6 +34,7 @@ Busylight, headset buttons), plus on Windows:
 - **Media keys** of the keyboard: during a call, play/pause answers or hangs up (StarCMX catches
   them while a call rings or runs). Buttons of Bluetooth headsets are not supported on Windows.
 
+- **Nextcloud**: contacts from Nextcloud address books (read and write, caller names), share recordings and call notes as links
 - **Several systems at once** ("Open another system" in the tray), as on Linux: one StarCMX per
   system, coordinated over named pipes.
 
