@@ -1,5 +1,17 @@
 # Änderungen
 
+## 1.1.0 – 2026-10-27
+
+### Arbeitsbereich
+- Mehrere Ansichten bei „Frei anordnen“: Links steht eine Leiste mit den Ansichten, ein Klick
+  zeigt deren Kacheln. Jede Ansicht hat ihre eigene Anordnung, ein Modul darf in mehreren
+  Ansichten vorkommen. **+** legt eine neue, leere Ansicht an
+- Im Bearbeiten-Modus (Stift oben) öffnet ein Klick auf die gewählte Ansicht Name, Symbol und
+  Löschen; Ziehen ändert die Reihenfolge. „Abbrechen“ nimmt alles zurück
+- An der Ansicht steht die Zahl ungelesener Chats, neuer Voicemails usw. ihrer Kacheln
+- Beim Start kommt die zuletzt gewählte Ansicht. Die bisherige Anordnung wird zur „Übersicht“.
+  Im Instanzenbetrieb hat jede Anlage ihre eigenen Ansichten
+
 ## 1.0.3 – 2026-10-27
 
 ### Audio
