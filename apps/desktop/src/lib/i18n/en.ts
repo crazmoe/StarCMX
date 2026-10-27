@@ -293,6 +293,7 @@ const dict: Record<string, string> = {
   "Bluetooth-Headsets klingeln nicht selbst, sondern über den Klingelton. Unter „Klingeltöne“ lassen sie sich als Klingelgerät wählen und testen.": "Bluetooth headsets don't ring by themselves but play the ringtone. Under “Ringtones” you can choose and test them as ringing device.",
   "Bluetooth-Gerät": "Bluetooth device",
   "USB-Gerät": "USB device",
+  "Unbekanntes Audiogerät": "Unknown audio device",
   "Headset-Tasten": "Headset buttons",
   "Tasten am Headset verwenden (Jabra, Poly, EPOS, Bluetooth)": "Use headset buttons (Jabra, Poly, EPOS, Bluetooth)",
   "Telefonietasten, Klingeln und LEDs gehen nur über USB: per Kabel oder mit dem Dongle des Herstellers (z. B. Jabra Link). Direkt per Bluetooth verbundene Headsets: Nur die Play/Pause-Taste nimmt an und legt auf, und auch das nur, wenn das Headset sie sendet.": "Call buttons, ringing and LEDs only work over USB: by cable or with the manufacturer's dongle (e.g. Jabra Link). Headsets connected directly via Bluetooth: only the play/pause button answers and hangs up, and only if the headset sends it.",

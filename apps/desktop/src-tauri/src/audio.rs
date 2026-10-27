@@ -276,23 +276,27 @@ fn device_arg(device: Option<String>) -> Option<String> {
     device.filter(|d| !d.is_empty() && d != sf_audio::DEFAULT_DEVICE)
 }
 
-/// Namen gekoppelter Bluetooth-Geräte, auch wenn sie gerade nicht verbunden
-/// sind, für Einträge wie `bluez_output.84_D3_52_8C_B9_D0.1`. Fragt BlueZ
-/// auf dem Systembus; was es nicht kennt, fehlt in der Antwort.
+/// Namen fehlender Geräte aus dem System: unter Windows aus dem
+/// Gerätespeicher (Einträge wie `{0.0.0.00000000}.{…}`), unter Linux die
+/// gekoppelten Bluetooth-Geräte für Einträge wie
+/// `bluez_output.84_D3_52_8C_B9_D0.1` von BlueZ. Was das System nicht
+/// kennt, fehlt in der Antwort.
 #[tauri::command]
-pub async fn bluetooth_names(devices: Vec<String>) -> HashMap<String, String> {
+pub async fn device_names(devices: Vec<String>) -> HashMap<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(windows)]
+        let mut names = sf_audio::names(&devices);
+        #[cfg(not(windows))]
+        let mut names = HashMap::new();
         let aliases = bluez_aliases().unwrap_or_else(|e| {
             tracing::debug!(error = %e, "Bluetooth-Namen nicht gelesen");
             HashMap::new()
         });
-        devices
-            .into_iter()
-            .filter_map(|d| {
-                let alias = aliases.get(&bluetooth_address(&d)?)?.clone();
-                Some((d, alias))
-            })
-            .collect()
+        names.extend(devices.into_iter().filter_map(|d| {
+            let alias = aliases.get(&bluetooth_address(&d)?)?.clone();
+            Some((d, alias))
+        }));
+        names
     })
     .await
     .unwrap_or_default()
