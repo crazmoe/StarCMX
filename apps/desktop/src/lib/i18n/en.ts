@@ -666,5 +666,8 @@ const dict: Record<string, string> = {
   "Links": "Left",
   "Rechts": "Right",
   "Einfahren und erst bei Mausberührung am Rand zeigen": "Hide and show only when the mouse touches the edge",
+  "Bildschirm": "Screen",
+  "Hauptbildschirm": "Main screen",
+  "Bildschirm {n}": "Screen {n}",
 };
 export default dict;
