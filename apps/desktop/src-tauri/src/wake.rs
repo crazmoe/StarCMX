@@ -239,7 +239,10 @@ mod power {
             )
         };
         if err != ERROR_SUCCESS {
-            tracing::info!(code = err.0, "Standby-Meldungen von Windows nicht verfügbar");
+            tracing::info!(
+                code = err.0,
+                "Standby-Meldungen von Windows nicht verfügbar"
+            );
         }
     }
 
