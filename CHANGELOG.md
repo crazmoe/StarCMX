@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.5.1 – 2026-10-28
+
+### Schnellwahl am Bildschirmrand
+- Wird ein Bildschirm an- oder abgesteckt (z. B. Laptop ab- oder angedockt), wechselt die Leiste
+  von selbst an den Hauptbildschirm und wieder zurück an den gewählten Bildschirm
+
 ## 1.5.0 – 2026-10-28
 
 ### Schnellwahl am Bildschirmrand
