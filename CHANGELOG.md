@@ -1,5 +1,16 @@
 # Änderungen
 
+## 1.4.1 – 2026-10-28
+
+### Verbindung
+- Nach Standby oder Ruhezustand verbindet StarCMX wieder zuverlässig, auch das Wählen geht
+  wieder. Windows meldet das Aufwachen jetzt direkt; bisher erkannte StarCMX es nicht, weil die
+  Zeitmessung von Windows im Ruhezustand weiterläuft
+- Nach dem Aufwachen wartet StarCMX, bis die Anlage antwortet (WLAN, VPN), baut dann eine neue
+  Verbindung auf, erneuert die Anmeldung und startet das Softphone neu. Läuft ein Gespräch, wird
+  nur die SIP-Verbindung erneuert
+- Bricht die Verbindung zur Anlage ab, baut StarCMX sie sofort neu auf
+
 ## 1.4.0 – 2026-10-27
 
 ### Schnellwahl am Bildschirmrand
