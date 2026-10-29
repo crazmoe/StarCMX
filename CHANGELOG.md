@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.7.0 – 2026-10-29
+
+### Warteschlangen
+- Die Reiter „Angenommen“ und „Verpasst“ lassen sich auf **Heute** oder die letzten **7 Tage**
+  begrenzen; die Wahl bleibt gespeichert
+- Die Agenten stehen jetzt oben, direkt unter der Statistik und vor den Reitern
+
 ## 1.6.1 – 2026-10-29
 
 ### Warteschlangen
