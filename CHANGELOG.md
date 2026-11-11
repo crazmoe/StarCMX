@@ -1,6 +1,6 @@
 # Änderungen
 
-## 1.8.2 – 2026-11-11
+## 1.8.3 – 2026-11-11
 
 ### Schnellwahl
 - Die angedockte Leiste bleibt im Vordergrund: Sie wird beim Ausklappen und bei jedem Wechsel des aktiven Fensters wieder ganz nach oben gelegt; vorher konnten sich andere Programme, die selbst im Vordergrund liegen, darüber schieben
