@@ -121,8 +121,8 @@ mod imp {
         SHAppBarMessage,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetCursorPos, GetForegroundWindow, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
-        SWP_SHOWWINDOW, SetWindowPos,
+        GetClassNameW, GetCursorPos, GetForegroundWindow, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE,
+        SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowPos,
     };
 
     /// Breite der ausgefahrenen Leiste (logische Pixel)
@@ -161,6 +161,31 @@ mod imp {
         };
     }
 
+    /// Fenster der Windows-Oberfläche (Taskleiste, ihre Kontextmenüs und
+    /// Sprunglisten, Startmenü, Suche, Infobereich, Desktop): Wird eines davon
+    /// aktiv, die Leiste nicht darüber legen, sonst verdeckt sie deren Menüs.
+    fn shell_window(hwnd: HWND) -> bool {
+        const SHELL: &[&str] = &[
+            "Shell_TrayWnd",
+            "Shell_SecondaryTrayWnd",
+            "NotifyIconOverflowWindow",
+            "TopLevelWindowForOverflowXamlIsland",
+            "Windows.UI.Core.CoreWindow",
+            "Xaml_WindowedPopupClass",
+            "DV2ControlHost",
+            "#32768",
+            "Progman",
+            "WorkerW",
+        ];
+        let mut buf = [0u16; 128];
+        let n = unsafe { GetClassNameW(hwnd, &mut buf) };
+        if n <= 0 {
+            return false;
+        }
+        let class = String::from_utf16_lossy(&buf[..n as usize]);
+        SHELL.contains(&class.as_str())
+    }
+
     /// Mausposition am Rand selbst prüfen: Die Webansicht im schmalen
     /// Streifen meldet das Überfahren nicht zuverlässig. Wechselt das aktive
     /// Fenster, die Leiste wieder nach oben holen.
@@ -176,10 +201,13 @@ mod imp {
                 std::thread::sleep(std::time::Duration::from_millis(120));
                 let (edge, autohide) = super::STATE.lock().unwrap().clone();
                 if !edge.is_empty() {
-                    let fg = unsafe { GetForegroundWindow() }.0 as isize;
+                    let fg_hwnd = unsafe { GetForegroundWindow() };
+                    let fg = fg_hwnd.0 as isize;
                     if fg != foreground {
                         foreground = fg;
-                        if let Some(Ok(raw)) = app.get_webview_window("quick").map(|w| w.hwnd()) {
+                        if !shell_window(fg_hwnd)
+                            && let Some(Ok(raw)) = app.get_webview_window("quick").map(|w| w.hwnd())
+                        {
                             raise(HWND(raw.0 as _));
                         }
                     }
