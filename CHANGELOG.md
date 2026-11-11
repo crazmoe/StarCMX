@@ -5,6 +5,11 @@
 ### Schnellwahl
 - Die angedockte Leiste bleibt im Vordergrund: Sie wird beim Ausklappen und bei jedem Wechsel des aktiven Fensters wieder ganz nach oben gelegt; vorher konnten sich andere Programme, die selbst im Vordergrund liegen, darüber schieben
 
+## 1.8.2 – 2026-11-11
+
+### Favoriten
+- Sortieren mit den Pfeilen geht wieder richtig: Die Anlage zählt die Positionen ab 1, „Nach oben“ sprang deshalb zwei Plätze und „Nach unten“ tat nichts
+
 ## 1.8.1 – 2026-11-11
 
 ### Favoriten
