@@ -34,7 +34,7 @@ mod zoom;
 
 use bus::Event;
 use i18n::{t, tf};
-use plugins::{busylight, chat, fkeys, reach, voicemail};
+use plugins::{busylight, chat, favorites, fkeys, reach, voicemail};
 use serde::Serialize;
 use settings::Prefs;
 use sf_core::{Session, SessionEvent};
@@ -867,6 +867,7 @@ pub fn run() {
         .manage(chat::ChatState::default())
         .manage(reach::ReachState::default())
         .manage(fkeys::FkeyState::default())
+        .manage(favorites::FavoriteState::default())
         .manage(voicemail::VoicemailState::default())
         .manage(audio::AudioState::default())
         .manage(bus::Bus::default())
@@ -1076,6 +1077,17 @@ pub fn run() {
             reach::mailbox_record,
             fkeys::fkeys_load,
             fkeys::fkey_presence,
+            favorites::favorites,
+            favorites::favorite_category_create,
+            favorites::favorite_category_rename,
+            favorites::favorite_category_move,
+            favorites::favorite_category_delete,
+            favorites::favorite_create,
+            favorites::favorite_rename,
+            favorites::favorite_move,
+            favorites::favorite_delete,
+            favorites::favorite_search,
+            favorites::favorite_chat_jid,
             fkeys::fkey_avatar,
             fkeys::account_pick_avatar,
             fkeys::account_set_avatar,
