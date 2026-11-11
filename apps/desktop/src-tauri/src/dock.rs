@@ -120,7 +120,10 @@ mod imp {
         ABE_LEFT, ABE_RIGHT, ABM_NEW, ABM_QUERYPOS, ABM_REMOVE, ABM_SETPOS, APPBARDATA,
         SHAppBarMessage,
     };
-    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, GetForegroundWindow, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+        SWP_SHOWWINDOW, SetWindowPos,
+    };
 
     /// Breite der ausgefahrenen Leiste (logische Pixel)
     const WIDTH: f64 = 300.0;
@@ -141,8 +144,26 @@ mod imp {
     ));
     static WATCHING: AtomicBool = AtomicBool::new(false);
 
+    /// Leiste zuoberst legen, ohne ihr den Fokus zu geben. Das einmal gesetzte
+    /// „immer im Vordergrund“ reicht nicht: Andere Programme, die selbst
+    /// zuoberst liegen wollen, schieben sich sonst darüber.
+    fn raise(hwnd: HWND) {
+        let _ = unsafe {
+            SetWindowPos(
+                hwnd,
+                Some(HWND_TOPMOST),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            )
+        };
+    }
+
     /// Mausposition am Rand selbst prüfen: Die Webansicht im schmalen
-    /// Streifen meldet das Überfahren nicht zuverlässig.
+    /// Streifen meldet das Überfahren nicht zuverlässig. Wechselt das aktive
+    /// Fenster, die Leiste wieder nach oben holen.
     fn watch(app: &AppHandle) {
         if WATCHING.swap(true, Ordering::SeqCst) {
             return;
@@ -150,9 +171,19 @@ mod imp {
         let app = app.clone();
         std::thread::spawn(move || {
             let mut outside_since: Option<std::time::Instant> = None;
+            let mut foreground = 0isize;
             loop {
                 std::thread::sleep(std::time::Duration::from_millis(120));
                 let (edge, autohide) = super::STATE.lock().unwrap().clone();
+                if !edge.is_empty() {
+                    let fg = unsafe { GetForegroundWindow() }.0 as isize;
+                    if fg != foreground {
+                        foreground = fg;
+                        if let Some(Ok(raw)) = app.get_webview_window("quick").map(|w| w.hwnd()) {
+                            raise(HWND(raw.0 as _));
+                        }
+                    }
+                }
                 if edge.is_empty() || !autohide {
                     outside_since = None;
                     continue;
@@ -275,10 +306,9 @@ mod imp {
         ));
         let _ = w.set_position(PhysicalPosition::new(rc.left, rc.top));
         *LAST.lock().unwrap() = (rc, open);
-        if autohide {
-            watch(app);
-        }
+        watch(app);
         let _ = w.show();
+        raise(hwnd);
     }
 
     pub fn undock(app: &AppHandle) {
