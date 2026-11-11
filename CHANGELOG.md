@@ -4,6 +4,7 @@
 
 ### Favoriten
 - Stift und Haken stehen nicht mehr unter dem Rollbalken, wenn die Liste scrollt
+- Neue Favoriten bekommen ohne eigenen Namen den Namen des Kollegen bzw. die Nummer; auf der Anlage und in den STARFACE-Apps war der Anzeigename sonst leer
 
 ## 1.8.0 – 2026-11-11
 
