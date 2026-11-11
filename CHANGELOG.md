@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.8.4 – 2026-11-11
+
+### Schnellwahl
+- Die angedockte Leiste legt sich nicht mehr über die Kontextmenüs der Taskleiste, das Startmenü oder die Suche
+
 ## 1.8.3 – 2026-11-11
 
 ### Schnellwahl
