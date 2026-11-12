@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.8.5 – 2026-11-12
+
+### Schnellwahl
+- In die eingefahrene Leiste lässt sich nach dem Ausfahren wieder tippen: Ein Klick hinein gibt ihr den Tastaturfokus
+
 ## 1.8.4 – 2026-11-11
 
 ### Schnellwahl
