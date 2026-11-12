@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.9.1 – 2026-11-12
+
+### Schnellwahl
+- Neue Einstellung **Schnellwahl zeigt**: Funktionstasten und Favoriten, nur Funktionstasten oder nur Favoriten
+- In den Einstellungen trennt ein Strich die Schnellwahl-Einstellungen von „Immer im Vordergrund“
+
 ## 1.9.0 – 2026-11-12
 
 ### Favoriten
