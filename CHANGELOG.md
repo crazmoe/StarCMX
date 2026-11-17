@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.9.8 – 2026-11-17
+
+### Gespräche
+- Tastentöne lassen sich während eines Gesprächs direkt über die Tastatur senden: Ziffern (auch Ziffernblock), * und #. Das gilt im Hauptfenster und in der Schnellwahlleiste, solange kein Eingabefeld (Suche, Chat, Notiz) den Fokus hat und genau ein Gespräch verbunden ist
+
 ## 1.9.7 – 2026-11-17
 
 ### Softphone
