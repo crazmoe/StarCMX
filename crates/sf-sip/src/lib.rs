@@ -220,6 +220,12 @@ impl Config {
         if let Some(l) = &self.sip_listen {
             c += &format!("sip_listen {l}\n");
         }
+        // Namen der Anlage löst das Betriebssystem auf (getaddrinfo) statt
+        // baresips eigener DNS-Client. Der fragt unter Windows nur die
+        // Server der Netzwerkkarte und findet manche Namen nicht (VPN,
+        // Hosts-Datei, CNAME-Ketten); die Registrierung scheitert dann mit
+        // „destination address required“.
+        c += "dns_getaddrinfo yes\n";
         c += &format!(
             "sip_verify_server {}\n",
             if self.verify_server { "yes" } else { "no" }
@@ -595,6 +601,12 @@ impl Drop for Softphone {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_resolves_names_via_system() {
+        let c = Config::default().render();
+        assert!(c.contains("dns_getaddrinfo yes\n"));
+    }
 
     #[test]
     fn wasapi_needs_explicit_default() {

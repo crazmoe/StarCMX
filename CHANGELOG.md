@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.9.6 – 2026-11-17
+
+### Softphone
+- Die SIP-Anmeldung findet die Anlage jetzt über die Namensauflösung des Betriebssystems. Bisher fragte das Softphone selbst einen DNS-Server und scheiterte bei manchen Anlagen (z. B. Starface Cloud mit gültigem Zertifikat) mit „SIP-Registrierung fehlgeschlagen: destination address required“, obwohl die Anlage erreichbar war
+
 ## 1.9.5 – 2026-11-12
 
 ### Konten
