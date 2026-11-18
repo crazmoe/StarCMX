@@ -7,6 +7,7 @@
 - „Vermitteln“ nach dem Makeln nutzt den Rückfrage-Bezug der Anlage, egal welches der beiden Gespräche gerade aktiv ist
 - Ein Rechtsklick ins Programm zeigt nicht mehr das Browser-Menü (Zurück, Aktualisieren, Drucken …). In Eingabefeldern und bei markiertem Text bleibt Kopieren/Einfügen möglich
 - Die Einstellung „Gespräch auf Kollegen ziehen“ steht jetzt unter Telefonie → Vermitteln statt bei der Schnellwahl
+- Die eingefahrene Schnellwahlleiste öffnet sich erst, wenn die Maus etwa eine Sekunde am Rand bleibt. Wer nur kurz über den Rand hinaus fährt, öffnet sie nicht mehr
 
 ## 1.9.11 – 2026-11-18
 
