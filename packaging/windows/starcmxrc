@@ -83,6 +83,8 @@
 #quick_dock_autohide=false
 # Inhalt: fkeys (Funktionstasten), favorites oder leer = beides
 #quick_content=
+# Gespräch auf Kollegen ziehen: leer = Rückfrage, direct = direkt vermitteln
+#drag_transfer=
 
 ## URL oder Programm bei Anruf (Liste, JSON)
 # trigger: ringing, answered oder outgoing; $(callerid) steht für die Rufnummer
