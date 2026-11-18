@@ -81,6 +81,8 @@
 # am Bildschirmrand andocken: left, right oder leer (nicht angedockt)
 #quick_dock=
 #quick_dock_autohide=false
+# eingefahrene Leiste erst nach so vielen Millisekunden am Rand ausfahren (0 = sofort)
+#quick_expand_delay=1000
 # Inhalt: fkeys (Funktionstasten), favorites oder leer = beides
 #quick_content=
 # Gespräch auf Kollegen ziehen: leer = Rückfrage, direct = direkt vermitteln, ask = jedes Mal fragen
