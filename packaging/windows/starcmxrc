@@ -83,7 +83,7 @@
 #quick_dock_autohide=false
 # Inhalt: fkeys (Funktionstasten), favorites oder leer = beides
 #quick_content=
-# Gespräch auf Kollegen ziehen: leer = Rückfrage, direct = direkt vermitteln
+# Gespräch auf Kollegen ziehen: leer = Rückfrage, direct = direkt vermitteln, ask = jedes Mal fragen
 #drag_transfer=
 
 ## URL oder Programm bei Anruf (Liste, JSON)
