@@ -60,7 +60,8 @@ Installer es nach.
 
 Admins legen systemweite Einstellungen in `%ProgramData%\StarCMX\starcmxrc` ab (meist
 `C:\ProgramData\StarCMX\starcmxrc`), im selben Format wie unter Linux. Vorlage mit allen
-Einstellungen: [`packaging/vorlagen/etc/xdg/starcmxrc`](packaging/vorlagen/etc/xdg/starcmxrc).
+Einstellungen: [`packaging/windows/starcmxrc`](packaging/windows/starcmxrc). Verteilung per GPO
+mit Anmeldeskript und automatischem Download: [`packaging/windows`](packaging/windows/README.md).
 `schluessel=wert` ist ein Startwert, `schluessel[$i]=wert` sperrt die Einstellung.
 
 ### Türkameras mit RTSP
