@@ -9,7 +9,7 @@
 
 use crate::settings::Prefs;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use tauri::{AppHandle, Manager};
 
 /// Gewählter Rand ("left"/"right", leer = nicht angedockt) und Einfahren
@@ -17,6 +17,8 @@ static STATE: Mutex<(String, bool)> = Mutex::new((String::new(), false));
 
 /// Gewählter Bildschirm (Name wie von Tauri gemeldet; leer = Hauptbildschirm)
 static MONITOR: Mutex<String> = Mutex::new(String::new());
+/// Wartezeit in ms, bis die eingefahrene Leiste bei Maus am Rand ausfährt
+static EXPAND_DELAY: AtomicU32 = AtomicU32::new(1000);
 
 /// Bildschirm zum Andocken: der gewählte, sonst der Hauptbildschirm
 fn pick_monitor(w: &tauri::WebviewWindow) -> Option<tauri::Monitor> {
@@ -49,6 +51,7 @@ pub fn apply(app: &AppHandle, prefs: &Prefs) {
     };
     let next = (edge, prefs.quick_dock_autohide);
     *MONITOR.lock().unwrap() = prefs.quick_dock_monitor.clone();
+    EXPAND_DELAY.store(prefs.quick_expand_delay, Ordering::Relaxed);
     let changed = {
         let mut s = STATE.lock().unwrap();
         let changed = *s != next;
@@ -208,6 +211,9 @@ mod imp {
         let app = app.clone();
         std::thread::spawn(move || {
             let mut outside_since: Option<std::time::Instant> = None;
+            // Maus am Rand der eingefahrenen Leiste seit; erst nach der
+            // eingestellten Wartezeit ausfahren (kurz drüber hinaus fahren öffnet nicht)
+            let mut inside_since: Option<std::time::Instant> = None;
             let mut foreground = 0isize;
             loop {
                 std::thread::sleep(std::time::Duration::from_millis(120));
@@ -226,6 +232,7 @@ mod imp {
                 }
                 if edge.is_empty() || !autohide {
                     outside_since = None;
+                    inside_since = None;
                     continue;
                 }
                 let mut pt = POINT::default();
@@ -236,11 +243,22 @@ mod imp {
                 let inside =
                     pt.x >= rc.left && pt.x < rc.right && pt.y >= rc.top && pt.y < rc.bottom;
                 if !open {
-                    if inside {
+                    if !inside {
+                        inside_since = None;
+                        continue;
+                    }
+                    let delay = super::EXPAND_DELAY.load(Ordering::Relaxed);
+                    if inside_since
+                        .get_or_insert_with(std::time::Instant::now)
+                        .elapsed()
+                        >= std::time::Duration::from_millis(delay as u64)
+                    {
+                        inside_since = None;
                         dock(&app, &edge, true, true);
                     }
                     continue;
                 }
+                inside_since = None;
                 // Nicht einfahren, solange die Maustaste gedrückt ist (Gespräch ziehen)
                 let pressed = unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) } as u16 & 0x8000 != 0;
                 if inside || pressed {

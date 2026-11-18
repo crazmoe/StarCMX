@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.9.13 – 2026-11-18
+
+### Oberfläche
+- Behoben: Die eingefahrene Schnellwahlleiste fuhr trotz Einstellung „Ausfahren nach“ sofort aus. Die Wartezeit gilt jetzt auch für das Ausfahren durch das Programm selbst
+
 ## 1.9.12 – 2026-11-18
 
 ### Gespräche
