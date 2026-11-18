@@ -56,7 +56,8 @@ WebView2 is part of Windows 10/11; if it is missing, the installer downloads it.
 
 Admins put system-wide settings in `%ProgramData%\StarCMX\starcmxrc` (usually
 `C:\ProgramData\StarCMX\starcmxrc`), in the same format as on Linux. Template with all
-settings: [`packaging/vorlagen/etc/xdg/starcmxrc`](packaging/vorlagen/etc/xdg/starcmxrc)
+settings: [`packaging/windows/starcmxrc`](packaging/windows/starcmxrc). Rollout via Group Policy
+with logon script and automatic download: [`packaging/windows`](packaging/windows/README.md)
 (comments in German). `key=value` is an initial value, `key[$i]=value` locks the setting.
 
 ### Door cameras with RTSP
