@@ -81,6 +81,15 @@ jobs:
           npm run check
           npm run i18n:check
 
+      # Lizenzen der Fremdkomponenten frisch erzeugen (Einstellungen → Konto →
+      # Lizenz und neben dem Programm). Bricht ab, wenn eine Abhängigkeit eine
+      # Lizenz hat, die nicht in about.toml steht (z. B. GPL).
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+      - name: Lizenzen der Fremdkomponenten
+        run: node scripts/third-party-licenses.mjs
+
       - name: Formatierung
         run: cargo fmt --all --check
       - name: Clippy

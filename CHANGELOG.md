@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.9.15 – 2026-11-21
+
+### Lizenz
+- Neuer Punkt Einstellungen → Konto → Lizenz: Hinweis, dass StarCMX kein Produkt der STARFACE GmbH ist, und darunter die Lizenzen aller verwendeten Fremdkomponenten. Die Lizenztexte liegen auch im Installationsordner
+- Ohne Recht oder Lizenz „uci_autoprovisioning“ weicht StarCMX nicht mehr auf das App-Telefon der Mac-App aus. Es gilt, was der Administrator auf der Anlage freigegeben hat; angerufen wird dann über das primäre Telefon
+
 ## 1.9.14 – 2026-11-20
 
 ### Softphone

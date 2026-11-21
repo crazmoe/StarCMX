@@ -295,19 +295,13 @@ impl Phone {
         tracing::info!(device, "App-Telefon anmelden");
         let creds = match hub.register_sip_device(device, app_version).await {
             Ok(c) => c,
-            // Ohne uci_autoprovisioning legt die Anlage manche App-Telefone
-            // nicht an; das einer anderen Desktop-App bekommt jeder Benutzer.
+            // Ohne Recht/Lizenz uci_autoprovisioning gibt die Anlage kein
+            // App-Telefon heraus. Bewusst kein Ausweichen auf die Geräte-ID
+            // einer anderen App: Die Sperre des Administrators gilt.
             Err(e) if e.permission_denied().is_some() => {
-                tracing::info!(
-                    reason = e.permission_denied(),
-                    "App-Telefon verweigert, nehme das einer anderen Desktop-App"
-                );
-                hub.register_sip_device(sf_onehub::SIP_DEVICE_ID_FALLBACK, app_version)
-                    .await
-                    .map_err(|e| match e.permission_denied() {
-                        Some(msg) => PhoneError::NoProvisioningRight(msg.to_owned()),
-                        None => e.into(),
-                    })?
+                return Err(PhoneError::NoProvisioningRight(
+                    e.permission_denied().unwrap_or_default().to_owned(),
+                ));
             }
             Err(e) => return Err(e.into()),
         };
