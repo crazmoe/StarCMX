@@ -60,6 +60,11 @@ settings: [`packaging/windows/starcmxrc`](packaging/windows/starcmxrc). Rollout 
 with logon script and automatic download: [`packaging/windows`](packaging/windows/README.md)
 (comments in German). `key=value` is an initial value, `key[$i]=value` locks the setting.
 
+Error reports to [StarDash](https://github.com/crazmoe/StarDash) (optional): add a group
+`[Support]` with `url=` and `token=` (company key from `stardash create-company <name>`) at the
+end of the same file. Users cannot switch it on or off; without `url=` StarCMX never sends
+anything. Steps and all values: section 7 in [`packaging/windows`](packaging/windows/README.md).
+
 ### Door cameras with RTSP
 
 RTSP cameras need `ffmpeg.exe` in the `PATH` (e.g. `winget install Gyan.FFmpeg`). Motion JPEG

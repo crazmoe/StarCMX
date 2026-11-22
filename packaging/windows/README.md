@@ -72,3 +72,29 @@ Verteilen per GPO (mit der OU der **Computer** verknüpft):
 Benutzername und Passwort lassen sich nicht vorgeben: Der Benutzer meldet sich einmal auf der Anmeldeseite der Anlage an. Danach bleibt er angemeldet (das Anmelde-Token liegt in der Windows-Anmeldeinformationsverwaltung und hält 90 Tage).
 
 Beim Bearbeiten mit dem Editor als „UTF-8“ speichern, nicht „UTF-16“/„Unicode“.
+
+## 7. Fehlerberichte an StarDash (optional)
+Mit [StarDash](https://github.com/crazmoe/StarDash) sammelt die IT Fehlerberichte und den Zustand aller Arbeitsplätze an einer Stelle. StarCMX sendet nur, wenn die Gruppe `[Support]` in derselben Datei `C:\ProgramData\StarCMX\starcmxrc` steht. Benutzer können das weder ein- noch ausschalten.
+
+1. Auf dem StarDash-Server einen Firmen-Schlüssel erzeugen: `sudo stardash firma-anlegen "Firma AG"` (englisch: `create-company`). Den ausgegebenen Schlüssel kopieren.
+2. Am **Ende** der starcmxrc anfügen (nach allen `[General]`-Zeilen):
+
+   ```ini
+   [Support]
+   url=https://stardash.firma.ch
+   token=<Firmen-Schlüssel>
+   ```
+
+3. Die Datei wie in Punkt 6 per GPO verteilen. StarCMX liest sie nur beim Start: nach der Verteilung StarCMX ganz beenden (Symbol bei der Uhr) oder neu anmelden.
+4. Prüfen: In StarDash erscheint der PC nach dem Start unter „Arbeitsplätze“ (Statusmeldung standardmässig alle 15 Minuten). In StarCMX zeigt Einstellungen › Konto › Protokoll den Bereich „Fehlerberichte an den Support“ mit dem Knopf „Protokoll an Support senden“.
+
+Weitere Werte (alle optional):
+
+| Wert | Standard | Bedeutung |
+|---|---|---|
+| `auto=` | `crash,sip,login,wake` | Wann automatisch ein Bericht geht. `aus` (`off`) = nur von Hand |
+| `verbose=` | `false` | `true` schaltet das ausführliche Protokoll fest ein |
+| `heartbeat=` | `15` | Statusmeldung alle x Minuten, `0` = aus (dann nur Berichte) |
+| `internal_numbers=` | `klar` | `unkenntlich` (`hidden`) verbirgt interne Nummern bis 6 Stellen im Bericht |
+
+Der Firmen-Schlüssel erlaubt nur das Einliefern von Berichten, nicht das Lesen. Dass ihn Benutzer in der Datei sehen können, ist deshalb unkritisch. Ist er doch einmal weitergegeben worden: in StarDash mit `firma-schluessel` (`company-key`) einen neuen erzeugen und die Datei neu verteilen.
