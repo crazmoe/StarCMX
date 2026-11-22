@@ -64,6 +64,12 @@ Einstellungen: [`packaging/windows/starcmxrc`](packaging/windows/starcmxrc). Ver
 mit Anmeldeskript und automatischem Download: [`packaging/windows`](packaging/windows/README.md).
 `schluessel=wert` ist ein Startwert, `schluessel[$i]=wert` sperrt die Einstellung.
 
+Fehlerberichte an [StarDash](https://github.com/crazmoe/StarDash) (optional): am Ende derselben
+Datei eine Gruppe `[Support]` mit `url=` und `token=` anfügen (Firmen-Schlüssel aus
+`stardash firma-anlegen <Name>`). Benutzer können das weder ein- noch ausschalten; ohne `url=`
+sendet StarCMX nie etwas. Schritte und alle Werte: Punkt 7 in
+[`packaging/windows`](packaging/windows/README.md).
+
 ### Türkameras mit RTSP
 
 RTSP-Kameras brauchen `ffmpeg.exe` im `PATH` (etwa `winget install Gyan.FFmpeg`). Motion JPEG und
