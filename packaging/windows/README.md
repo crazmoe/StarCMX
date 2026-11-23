@@ -1,5 +1,7 @@
 # StarCMX im Firmennetz verteilen (Windows, GPO)
 
+> **Veraltet:** StarCMX heisst ab Version 2.1 StarCLX und kommt aus dem Repo [crazmoe/StarCLX](https://github.com/crazmoe/StarCLX). Diese Skripte finden keine neuen Versionen mehr. Neue Skripte und Anleitung: [StarCLX › packaging/windows](https://github.com/crazmoe/StarCLX/blob/main/packaging/windows/README.md#umstieg-von-starcmx).
+
 Zwei Skripte:
 - **StarCMX-herunterladen.ps1** läuft auf dem Server und holt automatisch die neueste Version von GitHub auf die Freigabe.
 - **StarCMX-anmeldeskript.ps1** läuft bei jeder Benutzeranmeldung und installiert bzw. aktualisiert StarCMX still.

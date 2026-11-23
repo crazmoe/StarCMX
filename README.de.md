@@ -2,6 +2,13 @@
 
 [English](README.md) · **Deutsch**
 
+> **StarCMX ist in [StarCLX](https://github.com/crazmoe/StarCLX) aufgegangen.** Ab Version 2.1
+> gibt es die Windows-Version dort, unter dem Namen StarCLX: Setup `StarCLX_<version>_x64-setup.exe`
+> unter [StarCLX-Releases](https://github.com/crazmoe/StarCLX/releases). Es entfernt ein
+> installiertes StarCMX und übernimmt Einstellungen, Konten und die Anmeldung. Firmen tauschen die
+> Verteilskripte aus: [Umstieg von StarCMX](https://github.com/crazmoe/StarCLX/blob/main/packaging/windows/README.md#umstieg-von-starcmx).
+> Dieses Repo ist archiviert; Fehler und Wünsche bitte bei StarCLX melden.
+
 StarCMX ist ein experimenteller, freier Windows-Client für STARFACE-Telefonanlagen. Er ist die
 Windows-Portierung von [StarCLX](https://github.com/crazmoe/StarCLX) und teilt dessen Code:
 dieselben Funktionen, dieselben Schnittstellen (OneHub gRPC, SIP/TLS mit SRTP, XMPP-Chat),
